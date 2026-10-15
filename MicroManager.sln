@@ -1,0 +1,34 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.324
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MicroManager.Core", "src\MicroManager.Core\MicroManager.Core.csproj", "{F5C2E3A1-1111-4444-AAAA-111111111111}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MicroManager.Core.Tests", "tests\MicroManager.Core.Tests\MicroManager.Core.Tests.csproj", "{F5C2E3A1-2222-4444-AAAA-222222222222}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{E3A1F5C2-3333-4444-AAAA-333333333333}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{E3A1F5C2-4444-4444-AAAA-444444444444}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{E3A1F5C2-5555-4444-AAAA-555555555555}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+		.gitignore = .gitignore
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F5C2E3A1-1111-4444-AAAA-111111111111}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F5C2E3A1-1111-4444-AAAA-111111111111}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F5C2E3A1-1111-4444-AAAA-111111111111}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F5C2E3A1-1111-4444-AAAA-111111111111}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F5C2E3A1-2222-4444-AAAA-222222222222}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F5C2E3A1-2222-4444-AAAA-222222222222}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F5C2E3A1-2222-4444-AAAA-222222222222}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F5C2E3A1-2222-4444-AAAA-222222222222}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectDependencies) = postSolution
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = postSolution
+	EndGlobalSection
+EndGlobal
