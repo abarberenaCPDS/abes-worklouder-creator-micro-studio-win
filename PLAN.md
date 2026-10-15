@@ -1,6 +1,6 @@
 # Windows 11 port plan — Micro Manager (MAUI / .NET 10)
 
-Status: **Phase 1 complete.** `MicroManager.Core` (net10.0) is ported and all 65 xUnit tests pass on this Windows PC. **Phase 0 spike code written** (`src/MicroManager.HidSpike`) — uses P/Invoke to hid.dll + setupapi to enumerate VID 0x303A, open the vendor-collection interface (usage page 0xFF00), and exchange JSON-RPC reports. Spike not yet run against hardware: the pad was not detected as a present HID interface during this session (0 present interfaces; 42 ghost entries but none for VID 0x303A). Re-run the spike once the pad is connected and visible in Device Manager. Next: Phase 2 MAUI app shell once HID transport is verified.
+Status: **Phase 0 ✅** — HID spike verified against real Creator Micro 2 (VID 0x303A / PID 0x8298, firmware 0.6.3). Successfully enumerated HID interfaces, found the vendor-collection interface (usage page 0xFF00), and exchanged JSON-RPC reports (`sys.version` → `{"result":{"version":"0.6.3"},"id":1}`). **Phase 1 ✅** — `MicroManager.Core` (net10.0) ported, all 65 xUnit tests pass. **Phase 2 in progress** — `MicroManager.Transport.Winrt` (net10.0-windows) built with P/Invoke hid.dll transport. Next: `MicroManager.App` MAUI tray app.
 
 Goal: an MVP tray app for Windows 11 that does what the macOS menu-bar app does — light pad keys per Herdr agent state and jump to agents on key press — then reach full parity. MVP first, full parity after. Code lands in `windows/` as a separate solution alongside the Swift package.
 

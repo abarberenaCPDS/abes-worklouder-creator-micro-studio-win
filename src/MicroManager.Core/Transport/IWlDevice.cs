@@ -53,6 +53,12 @@ public static class WireProtocol
     public const int MaxChunk = 61;
     public const int ReportSize = 64;
 
+    /// Work Louder Creator Micro 2 vendor identifiers.
+    public const ushort VendorIdWorkLouder = 0x303A;
+    public const ushort ProductIdCreatorMicro2 = 0x8298;
+    public const ushort VendorUsagePage = 0xFF00;
+    public const ushort VendorUsage = 0x0001;
+
     /// Splits a JSON payload into 64-byte output reports on the RPC channel.
     public static byte[][] EncodeReports(string json)
     {
