@@ -11,8 +11,8 @@ internal static class Native
     [DllImport("hid.dll", SetLastError = true)]
     public static extern bool HidD_GetAttributes(IntPtr device, out HIDD_ATTRIBUTES attributes);
 
-    [DllImport("hid.dll", SetLastError = true)]
-    public static extern IntPtr HidD_GetPreparsedData(IntPtr device);
+    [DllImport("hid.dll", SetLastError = true, CharSet = CharSet.Auto)]
+    public static extern bool HidD_GetPreparsedData(IntPtr device, out IntPtr preparsedData);
 
     [DllImport("hid.dll", SetLastError = true)]
     public static extern bool HidD_FreePreparsedData(IntPtr preparsedData);
@@ -190,9 +190,13 @@ internal static class Program
                 if (!Native.SetupDiEnumDeviceInterfaces(infoSet, IntPtr.Zero, ref HidGuid, memberIndex, ref ifaceData))
                     break;
 
-                if (!Native.SetupDiGetDeviceInterfaceDetail(
-                        infoSet, ref ifaceData, IntPtr.Zero, 0, out var requiredSize, IntPtr.Zero))
+                Console.WriteLine($"  [{memberIndex}] SetupDiEnumDeviceInterfaces OK");
+
+                var detailOk = Native.SetupDiGetDeviceInterfaceDetail(
+                    infoSet, ref ifaceData, IntPtr.Zero, 0, out var requiredSize, IntPtr.Zero);
+                if (!detailOk && Marshal.GetLastWin32Error() != 122)
                 {
+                    Console.WriteLine($"  [{memberIndex}] SetupDiGetDeviceInterfaceDetail size failed: {Marshal.GetLastWin32Error()}");
                     memberIndex++;
                     continue;
                 }
@@ -205,12 +209,16 @@ internal static class Program
                     if (!Native.SetupDiGetDeviceInterfaceDetail(
                             infoSet, ref ifaceData, detailBuf, requiredSize, out _, IntPtr.Zero))
                     {
+                        Console.WriteLine($"  [{memberIndex}] SetupDiGetDeviceInterfaceDetail detail failed: {Marshal.GetLastWin32Error()}");
                         memberIndex++;
                         continue;
                     }
 
-                    var pathPtr = detailBuf + (IntPtr.Size == 8 ? 8 : 4 + Marshal.SystemDefaultCharSize * 2);
-                    var path = Marshal.PtrToStringAuto(pathPtr)!;
+                    // SP_DEVICE_INTERFACE_DETAIL_DATA: cbSize (4 bytes) then DevicePath.
+                    // On 64-bit Windows some headers suggest cbSize=8 with padding,
+                    // but the actual layout is cbSize@0, DevicePath@4.
+                    var pathPtr = detailBuf + 4;
+                    var path = Marshal.PtrToStringUni(pathPtr)!;
 
                     var handle = Native.CreateFile(
                         path,
@@ -223,6 +231,7 @@ internal static class Program
 
                     if (handle == IntPtr.Zero || handle.ToInt64() == -1)
                     {
+                        Console.WriteLine($"  [{memberIndex}] CreateFile failed: {Marshal.GetLastWin32Error()} path={path}");
                         memberIndex++;
                         continue;
                     }
@@ -232,21 +241,40 @@ internal static class Program
                         var attrs = new HIDD_ATTRIBUTES { Size = Marshal.SizeOf<HIDD_ATTRIBUTES>() };
                         if (!Native.HidD_GetAttributes(handle, out attrs))
                         {
+                            Console.WriteLine($"  [{memberIndex}] HidD_GetAttributes failed: {Marshal.GetLastWin32Error()}");
                             memberIndex++;
                             continue;
                         }
 
-                        var preparsed = Native.HidD_GetPreparsedData(handle);
-                        if (preparsed == IntPtr.Zero)
+                        // Only probe Work Louder devices; HidD_GetPreparsedData can crash on
+                        // non-WL HID interfaces (touchpads, fingerprint sensors, etc.).
+                        if (attrs.VendorID != Native.VendorIdWorkLouder)
                         {
+                            memberIndex++;
+                            continue;
+                        }
+
+                        Console.WriteLine($"  [{memberIndex}] Found Work Louder device: VID={attrs.VendorID:X4} PID={attrs.ProductID:X4}");
+
+                        if (!Native.HidD_GetPreparsedData(handle, out IntPtr preparsed))
+                        {
+                            Console.WriteLine($"  [{memberIndex}] HidD_GetPreparsedData failed: {Marshal.GetLastWin32Error()}");
                             memberIndex++;
                             continue;
                         }
 
                         try
                         {
-                            if (Native.HidP_GetCaps(preparsed, out var caps) != 0)
+                            var capsOk = Native.HidP_GetCaps(preparsed, out var caps);
+                            if (capsOk != 0)
+                            {
                                 result.Add(new HidDeviceInfo(path, attrs, caps));
+                                Console.WriteLine($"    UsagePage={caps.UsagePage:X4} Usage={caps.Usage:X4} In={caps.InputReportByteLength} Out={caps.OutputReportByteLength}");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"    HidP_GetCaps=0");
+                            }
                         }
                         finally
                         {
