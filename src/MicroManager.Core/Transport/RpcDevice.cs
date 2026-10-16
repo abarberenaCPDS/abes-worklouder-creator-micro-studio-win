@@ -14,6 +14,11 @@ public class RpcDevice : IWlDevice, IAsyncDisposable
     private readonly Dictionary<int, PendingCall> _pending = new();
     private int _nextId = 1;
 
+    /// One message can be several reports, so two callers sending at once would
+    /// interleave their chunks into two unparseable frames. Only the send is
+    /// gated, never the wait for a reply, so a slow call cannot stall a fast one.
+    private readonly SemaphoreSlim _sendGate = new(1, 1);
+
     private sealed class PendingCall
     {
         public TaskCompletionSource<JsonRpcResponse> Tcs { get; }
@@ -81,9 +86,8 @@ public class RpcDevice : IWlDevice, IAsyncDisposable
             OnTx?.Invoke(this, (Method: method, Parameters: parameters, Id: id));
             var message = new Dictionary<string, object?> { ["method"] = method, ["id"] = id };
             message["params"] = parameters ?? new Dictionary<string, object?>();
-            var json = JsonSerializer.Serialize(message);
-            foreach (var report in WireProtocol.EncodeReports(json))
-                await _transport.SendReportAsync(report, linked.Token).ConfigureAwait(false);
+            await SendReportsAsync(
+                JsonSerializer.Serialize(message), linked.Token).ConfigureAwait(false);
 
             using var registration = linked.Token.Register(() =>
                 tcs.TrySetCanceled(linked.Token));
@@ -112,8 +116,16 @@ public class RpcDevice : IWlDevice, IAsyncDisposable
 
     private async Task SendReportsAsync(string json, CancellationToken cancellationToken)
     {
-        foreach (var report in WireProtocol.EncodeReports(json))
-            await _transport.SendReportAsync(report, cancellationToken).ConfigureAwait(false);
+        await _sendGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            foreach (var report in WireProtocol.EncodeReports(json))
+                await _transport.SendReportAsync(report, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _sendGate.Release();
+        }
     }
 
     private int NextId()
