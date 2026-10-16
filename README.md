@@ -52,6 +52,13 @@ The emulator stands in for the firmware and reproduces its awkward habits on
 purpose, so a bug it shows you is one you would have met on hardware — see the
 [top-level README](../README.md#no-pad-to-hand).
 
+## Using the pad
+
+Key-by-key layout, the colour table, how the pad gets bound to the app, the
+config file and troubleshooting are in
+**[docs/using-the-pad.md](docs/using-the-pad.md)** — the Windows walk-through of
+driving the real hardware.
+
 ## Configuration
 
 Macro keys, the dial's effort ladder and the joystick's model lists come from
@@ -83,6 +90,7 @@ dotnet build MicroManager.sln -p:Version=0.2.0-rc.1
 | `src/MicroManager.HidSpike` | the Phase 0 transport probe |
 | `tests/MicroManager.Core.Tests` | the ported WLKit test suite |
 | `PLAN.md` | the port's plan and current state |
+| `docs/using-the-pad.md` | using the hardware: key map, colours, config, troubleshooting |
 
 The macOS side of the repo — `Sources/WLKit` in particular — is the reference
 the port is written against; [`docs/hacking.md`](../docs/hacking.md) documents
