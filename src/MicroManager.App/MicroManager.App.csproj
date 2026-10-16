@@ -12,7 +12,7 @@
     <WindowsSdkPackageVersion>10.0.22621.38</WindowsSdkPackageVersion>
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
     <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
-    <WindowsPackageType></WindowsPackageType>
+    <WindowsPackageType>None</WindowsPackageType>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 

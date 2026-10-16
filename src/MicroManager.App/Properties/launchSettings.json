@@ -1,11 +1,7 @@
 {
   "profiles": {
-    "MicroManager.App": {
-      "commandName": "Project",
-      "launchBrowser": false,
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      }
+    "MicroManager.App (Unpackaged)": {
+      "commandName": "Project"
     }
   }
 }
