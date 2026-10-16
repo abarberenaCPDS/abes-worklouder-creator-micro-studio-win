@@ -31,7 +31,17 @@ public class TrayIconViewModel : INotifyPropertyChanged
         ToggleEnabledCommand = new Command(ToggleEnabled);
         ShowHideWindowCommand = new Command(ToggleWindowVisibility);
         ExitApplicationCommand = new Command(ExitApplication);
+
+        Lights = new LightingViewModel(bridge)
+        {
+            // The console's one-line reports join the pad's own, since the pad
+            // has no screen and this is the only feedback there is.
+            OnActivity = message => MainThread.BeginInvokeOnMainThread(() => LastAction = message),
+        };
     }
+
+    /// <summary>The manual lighting console — the Inspector's colour half.</summary>
+    public LightingViewModel Lights { get; }
 
     public ICommand ToggleEnabledCommand { get; }
     public ICommand ShowHideWindowCommand { get; }

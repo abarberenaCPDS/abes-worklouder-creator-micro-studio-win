@@ -8,6 +8,19 @@ console harness, so there is nothing else to keep in step.
 
 ## [Unreleased]
 
+### Added
+
+- A **lights console** — the Windows counterpart of the macOS **Inspector**'s
+  lighting half, and the only place in either implementation where a colour is
+  chosen by hand (both menu-bar apps paint from a compiled-in palette). Pick
+  keys, set colour, effect, brightness and speed, and apply to the selection, to
+  the whole keys zone, or to the underglow, with "all lights off" to end.
+- A **take the lights off the bridge** switch. The bridge repaints every 2.5 s,
+  so a colour applied underneath it would be gone before it was seen; while the
+  switch is on, the bridge keeps tracking Herdr and the keys keep working, but
+  it stops painting. (On macOS the Inspector is a separate process and simply
+  competes with the bridge, which is why its colours do not last.)
+
 ### Changed
 
 - Agents are named by their Herdr **pane title** (`terminal_title_stripped`)

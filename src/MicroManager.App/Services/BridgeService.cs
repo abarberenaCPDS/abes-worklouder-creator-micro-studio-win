@@ -31,6 +31,23 @@ public interface IBridgeService
 
     bool IsConnected { get; }
     bool IsEnabled { get; set; }
+
+    /// <summary>
+    /// While this is on, the pad is being driven by hand: Herdr is still tracked
+    /// and the keys still work, but the bridge stops painting, so a chosen
+    /// colour is not wiped by the next poll. Turning it off hands the pad back
+    /// and the next tick repaints it from the agents.
+    /// </summary>
+    bool ManualLighting { get; set; }
+
+    /// <summary>
+    /// Sends a hand-built picture — the lighting console's apply buttons — and
+    /// mirrors it into the window's swatches.
+    /// </summary>
+    Task ApplyLightingAsync(
+        List<Oai.Thread>? threads = null,
+        Oai.Zone? keys = null,
+        Oai.Zone? ambient = null);
 }
 
 public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
@@ -56,8 +73,15 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
     private KeyBindings _keyBindings = KeyBindings.Load();
 
     private volatile bool _isEnabled = true;
+    private volatile bool _manualLighting;
     private bool _warnedNoTerminal;
     private bool _disposed;
+
+    /// <summary>
+    /// What the lighting console last put on the keys, so the window's swatches
+    /// follow it. Rebuilt from the agents as soon as the bridge paints again.
+    /// </summary>
+    private readonly Dictionary<int, int> _manualLit = new();
 
     public bool IsConnected => _rpcDevice?.IsConnected ?? false;
 
@@ -72,6 +96,17 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
             if (_isEnabled == value) return;
             _isEnabled = value;
             _fingerprint = null;   // the next tick repaints, or clears, the pad
+        }
+    }
+
+    public bool ManualLighting
+    {
+        get => _manualLighting;
+        set
+        {
+            if (_manualLighting == value) return;
+            _manualLighting = value;
+            _fingerprint = null;   // handed back: the next tick repaints
         }
     }
 
@@ -215,10 +250,14 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
 
         var live = IsEnabled && agents.Count > 0;
         var aggregate = live ? StatusMapper.Aggregate(agents, _config) : null;
-        var threads = live ? BuildThreads(agents) : OffThreads();
+        var threads = live ? BuildThreads(agents) : LightingEditor.AllOffThreads();
 
         // The agent list is what the window shows, so it goes out every tick.
         OnAgentStateChanged?.Invoke(agents);
+
+        // Hand-driven lights: Herdr keeps being tracked, but the picture is left
+        // exactly as the console left it.
+        if (_manualLighting) return;
 
         var fingerprint = Fingerprint(threads, aggregate);
         if (fingerprint == _fingerprint) return;
@@ -270,24 +309,13 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
 
     /// Thread state paints over zone state, so clearing the zones alone leaves
     /// the pad lit. Both have to go.
-    private static List<Oai.Thread> OffThreads() =>
-        Enumerable.Range(0, Pad.MaxThreadId + 1)
-            .Select(id => new Oai.Thread(id)
-            {
-                Brightness = 0,
-                Effect = Oai.Effect.Off,
-                SyncKeys = false,
-                SyncAmbient = false,
-            })
-            .ToList();
-
     private async Task AllLightsOffAsync()
     {
         if (_rpcDevice is not { IsConnected: true } device) return;
 
         try
         {
-            await device.RequestAsync(Oai.MethodThreads, Oai.ThreadsParams(OffThreads()));
+            await device.RequestAsync(Oai.MethodThreads, Oai.ThreadsParams(LightingEditor.AllOffThreads()));
             await device.RequestAsync(
                 Oai.MethodRgbConfig, Oai.RgbConfigParams(Oai.Zone.Dark, Oai.Zone.Dark));
         }
@@ -295,6 +323,70 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
         {
             System.Diagnostics.Debug.WriteLine($"Could not clear the pad: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// The lighting console's way onto the pad. Only what it was handed is sent,
+    /// so applying to a selection leaves every other key exactly as it was.
+    /// </summary>
+    public async Task ApplyLightingAsync(
+        List<Oai.Thread>? threads = null,
+        Oai.Zone? keys = null,
+        Oai.Zone? ambient = null)
+    {
+        if (_rpcDevice is not { IsConnected: true } device)
+        {
+            OnError?.Invoke("The pad is not connected, so nothing was sent to it.");
+            return;
+        }
+
+        try
+        {
+            if (threads is { Count: > 0 })
+            {
+                await device.RequestAsync(Oai.MethodThreads, Oai.ThreadsParams(threads));
+            }
+
+            if (keys is not null || ambient is not null)
+            {
+                await device.RequestAsync(
+                    Oai.MethodRgbConfig,
+                    Oai.RgbConfigParams(keys ?? Oai.Zone.Dark, ambient ?? Oai.Zone.Dark));
+            }
+        }
+        catch (Exception ex)
+        {
+            OnError?.Invoke($"Could not light the pad: {ex.Message}");
+            return;
+        }
+
+        if (threads is { Count: > 0 })
+        {
+            foreach (var thread in threads)
+            {
+                if (thread.Color is { } color && (thread.Brightness ?? 0) > 0 &&
+                    thread.Effect is { } effect && effect != Oai.Effect.Off)
+                {
+                    _manualLit[thread.Id] = color;
+                }
+                else
+                {
+                    _manualLit.Remove(thread.Id);
+                }
+            }
+        }
+
+        // A zone lights every key under it, so the swatches follow the colour.
+        if (keys is { } zone)
+        {
+            for (var id = 0; id < Pad.KeyCount; id++)
+            {
+                if (zone.Effect == Oai.Effect.Off || zone.Brightness <= 0) _manualLit.Remove(id);
+                else _manualLit[id] = zone.Color;
+            }
+        }
+
+        PublishKeyState(_manualLit);
     }
 
     /// Fingerprints the whole rendered picture, not just the aggregate, so one
@@ -317,6 +409,9 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
 
         OnKeyStateChanged?.Invoke(lit);
     }
+
+    /// The lighting console keeps its own map, since it knows what it sent.
+    private void PublishKeyState(IReadOnlyDictionary<int, int> lit) => OnKeyStateChanged?.Invoke(lit);
 
     // MARK: - Key presses
 
