@@ -8,6 +8,8 @@ console harness, so there is nothing else to keep in step.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-16
+
 ### Added
 
 - A **lights console** — the Windows counterpart of the macOS **Inspector**'s

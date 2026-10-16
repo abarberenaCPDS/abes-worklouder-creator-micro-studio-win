@@ -45,8 +45,9 @@ name.
 
 ### The tray menu
 
-`v0.1.0` (the running version), **Show / Hide Window**, **Toggle Bridge**,
-**Exit**. Left-clicking the icon toggles the window.
+The first entry shows the running version and is not a command. Then **Show /
+Hide Window**, **Toggle Bridge**, **Exit**. Left-clicking the icon toggles the
+window.
 
 ## The pad, key by key
 
