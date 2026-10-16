@@ -15,7 +15,7 @@
                HorizontalOptions="Center"
                TextColor="{StaticResource SecondaryColor}" />
         
-        <Grid ColumnDefinitions="*,*" RowDefinitions="*,*,*" Spacing="10" Margin="0,20,0,0">
+        <Grid ColumnDefinitions="*,*" RowDefinitions="*,*,*" RowSpacing="10" ColumnSpacing="10" Margin="0,20,0,0">
             <Label Text="Status" Grid.Column="0" Grid.Row="0" FontAttributes="Bold" />
             <Label Text="{Binding StatusText}" Grid.Column="1" Grid.Row="0" />
             
