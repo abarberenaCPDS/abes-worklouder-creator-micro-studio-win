@@ -24,6 +24,10 @@ public sealed class EmulatedTransport : IWlTransport
     public EmulatedTransport(PadEmulator emulator)
     {
         _emulator = emulator;
+        // Key notifications are pushed as input reports by the emulator itself;
+        // forward them so a wrapped pad reaches the RPC layer like a directly
+        // wired one does.
+        _emulator.OnReportReceived += (_, report) => OnReportReceived?.Invoke(this, report);
     }
 
     public Task ConnectAsync(CancellationToken cancellationToken = default) =>

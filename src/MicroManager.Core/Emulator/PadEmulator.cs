@@ -292,8 +292,24 @@ public sealed class PadEmulator : IWlTransport
         Notify(Oai.NotifyJoystick,
             new Dictionary<string, object?> { ["a"] = angle, ["d"] = distance });
 
-    private void Notify(string method, Dictionary<string, object?> parameters) =>
-        OnNotify?.Invoke((method, JsonSerializer.SerializeToElement(parameters)));
+    private void Notify(string method, Dictionary<string, object?> parameters)
+    {
+        var payload = JsonSerializer.SerializeToElement(parameters);
+        OnNotify?.Invoke((method, payload));
+
+        // The firmware pushes these as *input reports*, and in the abbreviated
+        // envelope (`m`/`p`, not `method`/`params`). Everything above the
+        // transport only ever sees reports, so without this the key path is
+        // unreachable without hardware to hand — which is the one thing the
+        // emulator exists to avoid.
+        var envelope = JsonSerializer.Serialize(new Dictionary<string, object?>
+        {
+            ["m"] = method,
+            ["p"] = parameters,
+        });
+        foreach (var report in WireProtocol.EncodeReports(envelope))
+            OnReportReceived?.Invoke(this, report);
+    }
 
     private void Note(string line)
     {
