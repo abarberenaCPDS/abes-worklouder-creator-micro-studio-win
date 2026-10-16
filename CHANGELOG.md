@@ -8,6 +8,8 @@ console harness, so there is nothing else to keep in step.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-16
+
 ### Added
 
 - **Reconnection.** The port now notices the pad leaving and opens it again.

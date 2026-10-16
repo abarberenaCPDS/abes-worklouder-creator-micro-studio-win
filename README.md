@@ -5,7 +5,7 @@
 ![Platform](https://img.shields.io/badge/platform-Windows%2011-0078D4)
 ![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)
 ![UI](https://img.shields.io/badge/UI-.NET%20MAUI-512BD4)
-![Version](https://img.shields.io/badge/version-0.2.0-blue)
+![Version](https://img.shields.io/badge/version-0.3.0-blue)
 ![SemVer](https://img.shields.io/badge/SemVer-2.0.0-3E9392)
 ![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-FE5196)
 
