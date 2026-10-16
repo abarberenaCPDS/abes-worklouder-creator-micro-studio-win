@@ -1,6 +1,6 @@
 # Windows 11 port plan — Micro Manager (MAUI / .NET 10)
 
-Status: **Phase 2 in progress** — the MAUI app builds and launches via F5 (VS 2026, unpackaged), drives the real Creator Micro 2 over raw HID, binds its agent keymap, and lives in the tray.
+Status: **Phase 2 in progress** — the MAUI app builds and launches via F5 (VS 2026, unpackaged), drives the real Creator Micro 2 over raw HID, binds its agent keymap, lives in the tray, and acts on key presses (agent key → `agent.focus` + raise the terminal).
 
 ## Progress checklist
 
@@ -11,7 +11,10 @@ Status: **Phase 2 in progress** — the MAUI app builds and launches via F5 (VS 
 - [x] Phase 2 (keymap) — `KeymapManager.ApplyAsync` now completes against the real pad (reports "already applied" on the pad, and applies cleanly on the emulator). Two bugs fixed: the emulator returned `fs.read`'s `data` as a nested object where the firmware — and the Swift emulator — return a JSON **string**, so every emulated read failed to parse; and the joystick check demanded all four cardinal sectors, but firmware 0.6.3's radial stick exposes only two (0.25/0.75), so the check could never pass. The check now verifies the cardinals the device actually exposes (an exposed cardinal with a wrong code still fails).
 - [x] Phase 2 (tray) — real tray icon via `H.NotifyIcon.Maui`: generated icon, live tooltip, context menu (Show/Hide Window, Toggle Bridge, Exit), left-click toggles the window. (Window *close* → tray is not wired yet.)
 - [x] Tooling — SemVer from one source (`Directory.Build.props`, surfaced by the app and the console harness), `CHANGELOG.md`, a `README.md` with badges, and a repo-root `AGENTS.md`
-- [ ] Phase 2 (features) — agent-key colours, dial/joystick, on/off switch, macro keys, login item
+- [x] Phase 2 (keys) — key presses are dispatched off the `v.oai.hid` notification stream: an agent key calls `agent.focus` and raises the terminal window, the tab key cycles tabs, the macro keys type the configured text into the focused pane unsubmitted, and the switch clears the lights while leaving the keymap bound. Painting is skipped unless a fingerprint of the whole picture changes.
+- [x] Phase 2 (tune) — the dial climbs the Claude effort ladder (`/effort`) or sends the Codex chords, and the joystick cycles the Claude model list (`/model`) or drives the Codex picker.
+- [x] Phase 2 (emulator) — the pad emulator now pushes `v.oai.hid` notifications as input reports in the abbreviated `m`/`p` envelope, so the key path is reachable without hardware. Concurrent RPC sends are serialised at the transport, so a key press handled on the read thread cannot interleave its frames with the poll loop's.
+- [ ] Phase 2 (login item) — start with Windows via `HKCU\...\Run`
 - [ ] Upstream issue — propose the `windows/` subdirectory before Phase 2 grows
 - [ ] Phase 3 (parity) — stack float window, land panel, emulator window, wide-key default
 - [ ] Phase 3 (packaging/CI) — unpackaged zip v1, `windows-latest` CI job publishing `MicroManager-win-x64.zip`
@@ -51,7 +54,8 @@ Tests to port (they are the spec): `PadEmulatorTests`, `StatusMapperTests`, `Key
 - Login item: registry `HKCU\...\Run` (unpackaged v1); StartupTask if MSIX later
 
 Windows-specific gotchas:
-- **Focus stealing**: Herdr Windows release notes show it can jump to a pane and bring the terminal window forward — verify `agent.focus` on Windows before writing `SetForegroundWindow` interop.
+- **Focus stealing**: `agent.focus` selects the pane but does not bring the terminal forward, so the port raises the window itself (`SetForegroundWindow`, attached to the foreground thread's input queue — a background process cannot just take focus). The terminal is found by executable name; override with `WL_TERMINAL_PROCESS`.
+- **Joystick travel**: firmware 0.6.3 exposes only two stick sectors (bound to AG15/AG17, i.e. north/south), so the Codex picker can be opened and moved but its east/west confirm and cancel are unreachable on this firmware. Claude's model list only needs the vertical deflections, so it is unaffected.
 - **Wide key**: Superwhisper doesn't exist on Windows; right-Win tap opens Start menu. Default to Win+H (voice typing) or make it configurable.
 - **Stack window**: needs `WS_EX_NOACTIVATE` Win32 interop so it never steals focus from the terminal.
 - **GitButler `but`**: confirm it ships on Windows; degrade stack/land keys gracefully if not.

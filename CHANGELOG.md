@@ -20,13 +20,28 @@ console harness, so there is nothing else to keep in step.
   applies the keymap.
 - In-process pad emulator, reachable with `MICROMANAGER_EMULATOR=1`.
 - Semantic versioning for the port, from a single `Directory.Build.props`.
+- Key presses, dispatched off the `v.oai.hid` stream: an agent key focuses that
+  agent and raises the terminal window, the tab key cycles tabs, and the macro
+  keys type their configured text into the focused pane unsubmitted.
+- The dial and joystick: effort and model for the focused Claude or Codex pane.
+- The pad's lighting mirrored in the window as a row of key swatches, with the
+  last action on a status line — the pad itself has no screen.
 
 ### Fixed
 
+- The emulator raised its own notification event but never pushed the input
+  report a real pad sends, so key handling could only be tried against hardware.
 - A HID write deadlock: the blocking read loop and the writes shared one
   synchronous handle, so `WriteFile` could block forever. The transport now uses
   a dedicated write handle.
+- A message longer than one 64-byte report went out as several, so a key press
+  handled on the read thread could interleave its frames with the poll loop's
+  and leave two unparseable messages on the wire. Sends are now serialised.
+- The app project did not allow unsafe blocks, which the CsWinRT AOT source
+  generator emits into, so any change to the app's sources failed to compile.
 - The emulator's `fs.read` returned `data` as a nested object where the firmware
   returns a JSON *string*, so every emulated read failed to parse.
 - The keymap check demanded all four joystick cardinals, which firmware 0.6.3's
   two-sector stick can never satisfy.
+- The window bound each agent's status colour to a property that did not exist,
+  so the list was always grey.
