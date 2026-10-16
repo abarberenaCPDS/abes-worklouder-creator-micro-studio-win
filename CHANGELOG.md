@@ -8,6 +8,8 @@ console harness, so there is nothing else to keep in step.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-15
+
 ### Added
 
 - WinRT raw-HID transport for the Creator Micro 2, talking the vendor JSON-RPC
