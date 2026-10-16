@@ -33,7 +33,14 @@ toggle the window, right-click for the menu.
 | **Bridge** | `enabled` or `disabled` — the same switch as the tray menu |
 | **Pad keys** | 13 swatches mirroring the pad, each showing that key's live colour |
 | last action | what the pad was last used for — the pad has no screen of its own |
-| agent list | one row per Herdr agent, in Herdr's own order, each in its key's colour |
+| agent list | one row per Herdr agent, in Herdr's own order, each in its key's colour — click a row to jump to that agent |
+
+Agents are named by the **pane's own title**, the same text Herdr's panel shows
+for that pane: Claude's current task (`bug-prefill`), Codex's `repo | branch`.
+The checkout is printed underneath. That matters when several agents share one
+repo — naming them all after the directory leaves three rows reading
+`arcOS.Web`. A Herdr old enough to omit the title falls back to the directory
+name.
 
 ### The tray menu
 
