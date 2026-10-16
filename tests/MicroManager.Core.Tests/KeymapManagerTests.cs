@@ -38,18 +38,68 @@ public class KeymapManagerTests
         Assert.False(KeymapManager.IsAgentKeymapApplied(config));
     }
 
+    /// Only the dial's two rotations are ours. Its press — the encoder's third
+    /// slot — is left exactly as it was found, which is the macOS app's
+    /// behaviour: a stock pad ships it as the play/pause media key, and taking it
+    /// would change what the click does to the host.
     [Fact]
-    public void ApplyingBindsTheDialButNotItsPress()
+    public void ApplyingLeavesTheDialPressAlone()
     {
         var config = StockKeymap();
         KeymapManager.Apply(config);
         var layout = KeymapManager.ActiveLayerLayout(config)!;
-        var encoders = layout["encoders"]!.AsArray();
-        var dial = encoders[0]!.AsArray();
+        var dial = layout["encoders"]!.AsArray()[0]!.AsArray();
         Assert.Equal(KeymapManager.DialCodes[0], dial[0]!.GetValue<string>());
         Assert.Equal(KeymapManager.DialCodes[1], dial[1]!.GetValue<string>());
-        // press (third slot) untouched - stock is KC_MPLY
         Assert.Equal("KC_MPLY", dial[2]!.GetValue<string>());
+    }
+
+    /// A two-slot encoder has no press at all and the host cannot invent one, so
+    /// the keymap counts as applied rather than looping on a check it could never
+    /// satisfy — the same reading the stick's sectors get.
+    [Fact]
+    public void ATwoSlotEncoderIsAccepted()
+    {
+        var config = StockKeymap();
+        KeymapManager.Apply(config);
+        var layout = KeymapManager.ActiveLayerLayout(config)!;
+        layout["encoders"]!.AsArray()[0] = new JsonArray("KV_OAI_AG13", "KV_OAI_AG14");
+
+        Assert.True(KeymapManager.IsAgentKeymapApplied(config));
+    }
+
+    /// An encoder whose press still carries the media key is bound as far as the
+    /// port is concerned — the press is not ours to demand, so it is not a
+    /// failure. The two rotations are what the dial's report comes from.
+    [Fact]
+    public void AStockPressIsNotAFailure()
+    {
+        var config = StockKeymap();
+        KeymapManager.Apply(config);
+        var layout = KeymapManager.ActiveLayerLayout(config)!;
+        layout["encoders"]!.AsArray()[0] = new JsonArray("KV_OAI_AG13", "KV_OAI_AG14", "KC_MPLY");
+
+        Assert.True(KeymapManager.IsAgentKeymapApplied(config));
+    }
+
+    /// An earlier build of this port bound the dial's press to `AG19` to use the
+    /// click itself. Such a pad is not "already applied": the app puts the stock
+    /// media key back, then leaves the slot alone for good.
+    [Fact]
+    public void APadStillCarryingThePortsOldPressIsRepaired()
+    {
+        var config = StockKeymap();
+        KeymapManager.Apply(config);
+        var layout = KeymapManager.ActiveLayerLayout(config)!;
+        layout["encoders"]!.AsArray()[0] = new JsonArray(
+            "KV_OAI_AG13", "KV_OAI_AG14", KeymapManager.FormerDialPressCode);
+
+        // Not applied, so `ApplyAsync` writes — and what it writes is the stock key.
+        Assert.False(KeymapManager.IsAgentKeymapApplied(config));
+        KeymapManager.Apply(config);
+        var dial = layout["encoders"]!.AsArray()[0]!.AsArray();
+        Assert.Equal(KeymapManager.StockDialPressCode, dial[2]!.GetValue<string>());
+        Assert.True(KeymapManager.IsAgentKeymapApplied(config));
     }
 
     [Fact]

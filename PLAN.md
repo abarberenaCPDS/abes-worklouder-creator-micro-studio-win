@@ -12,15 +12,16 @@ Status: **Phase 2 in progress** — the MAUI app builds and launches via F5 (VS 
 - [x] Phase 2 (tray) — real tray icon via `H.NotifyIcon.Maui`: generated icon, live tooltip, context menu (Show/Hide Window, Toggle Bridge, Exit), left-click toggles the window. (Window *close* → tray is not wired yet.)
 - [x] Tooling — SemVer from one source (`Directory.Build.props`, surfaced by the app and the console harness), `CHANGELOG.md`, a `README.md` with badges, and a repo-root `AGENTS.md`
 - [x] Phase 2 (keys) — key presses are dispatched off the `v.oai.hid` notification stream: an agent key calls `agent.focus` and raises the terminal window, the tab key cycles tabs, the macro keys type the configured text into the focused pane unsubmitted, and the switch clears the lights while leaving the keymap bound. Painting is skipped unless a fingerprint of the whole picture changes.
-- [x] Phase 2 (tune) — the dial climbs the Claude effort ladder (`/effort`) or sends the Codex chords, and the joystick cycles the Claude model list (`/model`) or drives the Codex picker. Agents are named by their Herdr pane title rather than the working directory, so several agents sharing one checkout are distinguishable — the macOS app stops at the directory, so this is a deliberate divergence; the tray window lists that name over the checkout and its rows jump to the agent.
+- [x] Phase 2 (tune) — the dial **scrolls the focused pane** by default: five lines a detent, moving the pane's own viewport over `pane.scroll` wherever Herdr holds the output (anything drawing to the normal screen), and doing nothing where it does not (a full-screen TUI's alternate-screen rows never reach the host's scrollback, and Herdr can send neither a wheel event nor a page key — `pageup` is rejected as `unsupported key`; `/tui default` is the way out). Turned right it moves down towards the newest output, turned left up. `"dial": "effort"` puts it back on the Claude effort ladder (`/effort`) or the Codex chords, and the dial's **press is left alone** as macOS leaves it — the encoder's third slot stays the play/pause media key. The joystick cycles the Claude model list (`/model`) or drives the Codex picker. Agents are named by their Herdr pane title rather than the working directory, so several agents sharing one checkout are distinguishable — the macOS app stops at the directory, so this is a deliberate divergence; the tray window lists that name over the checkout and its rows jump to the agent.
 - [x] Phase 2 (lights) — a **lights console** drives the pad by hand: the macOS **Inspector**'s colour half (pick keys, colour, effect, brightness, speed; apply to the selection, the keys zone or the underglow; all lights off). Applying takes the lights off the bridge with a "take the lights off the bridge" switch, because the 2.5 s poll would repaint over them before they were seen; the bridge keeps tracking Herdr and the keys keep working while it is on. The payload building is `LightingEditor` in Core (11 tests); the panel is MAUI and lives by F5, like the rest of the window.
 - [x] Phase 2 (emulator) — the pad emulator now pushes `v.oai.hid` notifications as input reports in the abbreviated `m`/`p` envelope, so the key path is reachable without hardware. Concurrent RPC sends are serialised at the transport, so a key press handled on the read thread cannot interleave its frames with the poll loop's.
 - [x] Phase 2 (Herdr transport) — a Herdr server **inside WSL** is now reachable: an absolute `HERDR_SOCKET_PATH` runs `nc -U` in the distro over `wsl.exe`'s stdio, with `MICROMANAGER_WSL_DISTRO` selecting the distro, so no relay process and no port. Exercised end-to-end from the real pad (F5 against a running Herdr 0.9.5 session in WSL: agents listed, key presses acted on); `HerdrWslTests` covers the transport choice, the live call, and both failure modes. Three latent bugs fell out of it: the platform line ending (`\r\n`) went out instead of the protocol's newline, disposing a connection could throw over the real error (the reader closed the handle, then the writer's flush failed on it), and a transport that complained in non-JSON surfaced as a deserialisation error rather than its own words. The **named-pipe** branch is still unexercised against a real Windows Herdr and the pipe name it creates is unknown, so the app's default Unix-shaped path will not resolve to one.
+- [x] Phase 2 (reconnect) — the pad going away is noticed and reopened. A failed read or write against a removed device is taken as a disconnect (it used to be retried forever with the handle still open, so `IsConnected` reported a pad that had gone), and a supervisor re-enumerates and reopens with a 1–10 s backoff. Unplugging and a Bluetooth pad dropping off look the same from here, so one path covers both, and launching without a pad keeps looking — plugging one in just starts working. The emulator is deliberately not a reconnect fallback.
 - [ ] Phase 2 (login item) — start with Windows via `HKCU\...\Run`
 - [ ] Upstream issue — propose the `windows/` subdirectory before Phase 2 grows
 - [ ] Phase 3 (parity) — stack float window, land panel, emulator window, wide-key default. The lights console covers the macOS Inspector's colour and effect controls only; its traffic log, raw JSON-RPC console, key walk and "resend whole pad" are still unported.
 - [ ] Phase 3 (packaging/CI) — unpackaged zip v1, `windows-latest` CI job publishing `MicroManager-win-x64.zip`
-- [x] Phase 4 (Bluetooth) — no work needed: it already works. `WinrtTransport` matches on vendor + usage pair over the *HID class*, never on the bus, so it finds the vendor collection over USB and Bluetooth alike; verified on the real pad with the cable out (`Connected via win32-hid`, `battery: 99`, `is_charging: false`). What is missing is not Bluetooth support but **reconnection** — a drop leaves the app dead until it is restarted. See [Phase 4](#phase-4--bluetooth).
+- [x] Phase 4 (Bluetooth) — no work needed: it already works. `WinrtTransport` matches on vendor + usage pair over the *HID class*, never on the bus, so it finds the vendor collection over USB and Bluetooth alike; verified on the real pad with the cable out (`Connected via win32-hid`, `battery: 99`, `is_charging: false`). What was missing was not Bluetooth support but **recovery**, and that has since landed: a drop is noticed and the pad reopened. See [Phase 4](#phase-4--bluetooth).
 
 Goal: an MVP tray app for Windows 11 that does what the macOS menu-bar app does — light pad keys per Herdr agent state and jump to agents on key press — then reach full parity. MVP first, full parity after. Code lands in `windows/` as a separate solution alongside the Swift package.
 
@@ -129,20 +130,22 @@ reason: over Bluetooth the pad is a *single* HID device whose primary usage is
 keyboard, with the vendor collection alongside it in its usage pairs
 (`Sources/WLKit/WLDevice.swift:143-161`, `docs/hacking.md:78-85`).
 
-So there is no Bluetooth feature to build. What remains is not support but
-**recovery**, and it is the same code a USB replug would need:
+So there is no Bluetooth feature to build. What was left was not support but
+**recovery**, and both halves of it have since landed:
 
-- **Nothing reconnects.** `InitializeAsync` runs once at launch and `IsEnabled`
-  only flips a flag, so a drop — a sleeping pad, or walking out of range — leaves
-  the app dead until it is restarted. This is the one thing that would make
-  Bluetooth feel broken in daily use.
-- **The fallback used to hide itself.** The emulator fallback announced itself
-  with an error that `OnDeviceConnected` overwrote one line later, so the window
-  read `Connected` with no pad attached at all — which is exactly why this
-  question needed a console harness to settle. The status line now names the
-  emulator (`BridgeService.UsingEmulator`).
+- **Reconnection.** `WinrtTransport` used to retry a failed read forever with the
+  handle still open, so `IsConnected` reported a pad that had gone and the only
+  symptom was a poll error every 2.5 s. It now takes a failed read or write
+  against a removed device as the pad leaving, and `BridgeService`'s supervisor
+  re-enumerates and reopens it — which is what a sleeping pad needs. Launching
+  with no pad keeps looking too, so plugging one in starts working.
+- **The fallback that hid itself.** The emulator fallback announced itself with an
+  error that `OnDeviceConnected` overwrote one line later, so the window read
+  `Connected` with no pad attached at all — which is exactly why this question
+  needed a console harness to settle. The status line now names the emulator
+  (`BridgeService.UsingEmulator`).
 
-Neither is a Bluetooth change; both belong to the port's polish pass.
+Neither is a Bluetooth change; both were latent on USB as well.
 
 ## PR strategy
 

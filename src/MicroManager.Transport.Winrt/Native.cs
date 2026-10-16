@@ -85,6 +85,13 @@ internal static class Native
     /// Error from the first (sizing) SetupDiGetDeviceInterfaceDetail call; expected.
     public const int ERROR_INSUFFICIENT_BUFFER = 122;
 
+    /// A handle whose device has gone away. This is how an unplug shows up, and
+    /// how a Bluetooth pad dropping off the bus shows up too — the device node
+    /// is removed either way, so the read fails rather than blocking.
+    public const int ERROR_DEVICE_NOT_CONNECTED = 1167;
+    public const int ERROR_NO_SUCH_DEVICE = 433;
+    public const int ERROR_INVALID_HANDLE = 6;
+
     public const uint GENERIC_READ = 0x80000000;
     public const uint GENERIC_WRITE = 0x40000000;
     public const uint FILE_SHARE_READ = 0x00000001;

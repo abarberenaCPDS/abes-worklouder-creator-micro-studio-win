@@ -85,7 +85,8 @@ so is every lighting payload the app sends.
 | `9` | row 3, fourth | types its configured macro text (see below) |
 | `10` + `11` | row 4, the wide key | types its configured macro text; with none bound, *nothing* (it taps right-command for Superwhisper on macOS, which does not exist here) |
 | `12` | row 4, third | types its configured macro text |
-| dial | — | climbs or drops **reasoning effort** for the focused agent |
+| dial | turn | **scrolls** the focused pane, five lines a detent — right for down, left for up |
+| dial | press | *nothing* — the slot is left as the pad shipped it (play/pause) |
 | joystick | — | cycles the **model** for the focused agent |
 
 Agent slot N is the Nth key in reading order — `Pad.AgentKeyIds` in
@@ -110,14 +111,15 @@ and — only if something is missing — writes it back over `fs.write`:
 | what it binds | to |
 |---|---|
 | all 13 keys | `KV_OAI_AG00`…`KV_OAI_AG12`, key N to `AG`N |
-| the dial's two rotation slots | `KV_OAI_AG13` / `KV_OAI_AG14` (its press is left alone) |
+| the dial | `KV_OAI_AG13` / `KV_OAI_AG14` on the two rotation slots — its press is left alone |
 | the joystick's cardinal sectors | `KV_OAI_AG15`…`AG18`, matched by angle — diagonals keep their keycodes, and a sector the firmware does not expose cannot be invented |
 
 This is a **flash write to the pad's saved keymap** and it is deliberately
-narrow: every other key, layer, encoder and lighting setting is untouched, and
-anything outside the active profile's first layer is left as it is. In practice
-it writes once: the next launch finds the bindings already in place and writes
-nothing.
+narrow: every other key, layer and lighting setting is untouched, the stick's
+diagonals and any sector the firmware does not expose keep their own keycodes,
+and anything outside the active profile's first layer is left as it is. In
+practice it writes once: the next launch finds the bindings already in place and
+writes nothing.
 
 Two consequences worth knowing:
 
@@ -229,6 +231,8 @@ one file drives both implementations. (Note this is *not* `%APPDATA%`.)
     "12":    "Run but pull",
     "10+11": "Summarise what you are working on"
   },
+  "dial": "scroll",
+  "scroll": { "lines": 5 },
   "claude": { "models": ["fable", "opus", "sonnet", "haiku"], "efforts": ["low", "medium", "high", "xhigh", "max"] },
   "codex":  { "models": ["gpt-5.6-sol", "gpt-5.6-codex"] }
 }
@@ -244,6 +248,17 @@ it into a macro key; with no binding it does nothing on Windows.
 The file is read **once per bridge start**, so a change needs an off/on toggle,
 not a relaunch. A malformed file falls back to the defaults rather than leaving
 you with a dead pad.
+
+`"dial"` is `"scroll"` (the default) or `"effort"` — see [The dial](#the-dial).
+An unrecognised word keeps the default rather than leaving the dial dead.
+`"scroll"` says how a detent scrolls, and is ignored in effort mode: `"lines"` is
+how far Herdr moves a pane whose output it holds. `"up"` / `"down"` name keys to
+send to a pane that draws itself, and are **empty by default** — Herdr can send
+neither a wheel event nor a page key, so there is nothing safe to send unless you
+have bound the application's own line-scroll action (see [The dial](#the-dial)).
+The dial's rightward turn sends `"down"` and its leftward turn `"up"`.
+A step that is not a positive number keeps its default; a blank key stays blank,
+which means "send nothing".
 
 `claude.efforts` is the dial's ladder: turning past either end **pins** at the
 end rather than wrapping, because a dial has ends even when the hardware spins
@@ -345,8 +360,63 @@ minimised is restored.
 
 ### The dial
 
-Reasoning effort for the focused agent, one step per detent: clockwise up,
-counter-clockwise down.
+**Scrolling** by default: five lines per detent in the focused pane. Turned
+**right** the viewport moves **down** towards the newest output and turned **left**
+up through the older output, the way rolling a wheel does. Long agent output is the
+thing a dial is actually good at, and unlike effort it is not agent-specific. The
+status line reports where you landed, because the pad has no screen of its own.
+
+The pane the dial moves is the **focused agent's**, so there has to be one: with
+a plain shell pane focused you get "Nothing has focus in Herdr right now."
+
+A detent can only move output that Herdr holds. Panes drawing to the normal
+screen keep their output in Herdr's scrollback and scroll exactly; a **full-screen
+TUI** draws to the alternate screen, and those rows never reach the host's
+scrollback — terminal behaviour rather than a Herdr limitation, and the same
+reason a multiplexer cannot scroll `vim`:
+
+| the pane | what a detent does |
+|---|---|
+| drawing to the normal screen, so its output is in Herdr's scrollback | `pane.scroll` by `"lines"` lines — exact, and needing nothing of the application. The status line reads `384209 · 12/240 lines back` |
+| a full-screen TUI — Claude Code in fullscreen rendering, Codex by default | nothing to move and nothing to send: the status line says `nothing to scroll — a full-screen app keeps its own output`. It sends `"up"` / `"down"` instead if you have bound the application's own scroll keys — empty by default |
+
+There is no third mechanism to reach for. Herdr cannot synthesise a mouse wheel —
+there is no mouse or wheel event anywhere in its protocol — and its key vocabulary
+has no page key: `pageup`, `pagedown` and every other spelling come back
+`unsupported key`. The agents' own one-line scroll is bound to the wheel, so the
+pad cannot reach it.
+
+**`/tui default` in Claude Code** (the classic renderer), or **`/tui` →
+Scrollback** in Codex (or `[tui] alternate_screen = "never"` in
+`~/.codex/config.toml`), puts those rows into Herdr's scrollback — and then the
+dial scrolls them by exact lines, five a detent, a nudge past the three a wheel
+notch covers. Those panes also become readable to Herdr, which is what lets
+`herdr pane read --lines` produce the whole conversation. The trade is real: the
+classic renderer gives up fullscreen rendering's flicker-free drawing, its mouse
+support and its flat memory use, and `/tui` saves the choice for the conversations
+that follow. Scrolling the dial is the whole of the gain.
+
+The switch clears the pane and it redraws itself from the next thing it prints, so
+it can sit blank for a moment. It also starts a **fresh** scrollback: rows drawn
+before it are gone, and a pane has nothing for the dial to move until it has
+printed more than one screenful (the status line keeps saying `nothing to scroll`
+until then).
+
+Staying in fullscreen rendering is possible, but needs the far side's help: bind
+the agent's own line-scroll action to a key the pad can send, and name that key in
+`"up"` / `"down"`. In Claude Code those are `scroll:lineUp` / `scroll:lineDown`
+(wheel-bound by default) in `~/.claude/keybindings.json`. A detent sends the key
+`"lines"` times, so the distance still comes out the same.
+
+**Pressing the dial does nothing.** The encoder's third slot is left exactly as
+the pad shipped it — the play/pause media key — so a click reaches the host as a
+keystroke and is nothing to the app. That is what the macOS app does too: unlike
+the key grid and the two rotations, this slot is not taken over. A pad still
+carrying `AG19` there, left by an earlier build of this port, gets the stock key
+back on the next connect.
+
+Set `"dial": "effort"` in the config file to put the rotation back on **reasoning
+effort** for the focused agent:
 
 - **Claude** panes get `/effort <level>` typed and submitted, climbing
   `claude.efforts`.
@@ -355,11 +425,9 @@ counter-clockwise down.
   (`ctrl+alt+u` / `ctrl+alt+d` by default).
 - Anything else: "No effort control for *agent*".
 
-The dial's own press is not touched by this app.
-
-Effort is tracked per pane in memory from the app's own commands. Change the
-effort by hand inside the session and the app's idea of where you are drifts
-until the next detent.
+In effort mode the level is tracked per pane in memory from the app's own
+commands. Change the effort by hand inside the session and the app's idea of
+where you are drifts until the next detent.
 
 ### The joystick
 
@@ -397,6 +465,10 @@ switcher.
 3. Press an agent key: the status line says `Focused <name>`, Herdr selects that
    pane, and the terminal comes forward.
 4. Press a macro key: the text appears in the focused pane's prompt, unsent.
+5. Turn the dial: the status line reports the scroll — `12/240 lines back` in a
+   pane drawing to the normal screen, or `nothing to scroll — a full-screen app
+   keeps its own output` in one that draws itself (see [The dial](#the-dial)).
+6. Click the dial: nothing happens — that slot is left as the pad shipped it.
 
 If the lights are right but presses do nothing, that is the keymap: lit keys have
 their `AG` binding, so a key that lights can report itself. A key that stays dark
@@ -406,8 +478,9 @@ is the one sending a keystroke instead.
 
 | what you see | what it means |
 |---|---|
-| the status names the **pad emulator** | the vendor collection did not open — wrong device, Work Louder's `Input` app holding it, or a Bluetooth pad that is asleep. The app falls back to the emulator rather than exiting |
-| the pad dropped off (slept, or out of range) and never came back | nothing reconnects yet, so restart the app. See [`../PLAN.md` Phase 4](../PLAN.md#phase-4--bluetooth) |
+| the status names the **pad emulator** | the vendor collection did not open — wrong device, Work Louder's `Input` app holding it, or a Bluetooth pad that is asleep. The app runs against the emulator rather than exiting, and keeps looking for a real pad, so waking or plugging one in takes over by itself |
+| the pad dropped off (slept, or out of range) | the app says `Pad went away — looking for it`, retries forever (1s apart, backing off to 10s), then says `Pad reconnected` and rebinds the keys. A pulled cable and a Bluetooth drop look the same from here |
+| the dial says `nothing to scroll — a full-screen app keeps its own output` | the pane draws to the alternate screen, so Herdr holds none of its output — and the pad can send neither a wheel event nor any page key. Run `/tui default` in it (Codex: `/tui` → Scrollback), or name the application's own scroll keys in `"up"` / `"down"`. See [The dial](#the-dial) |
 | keys never light at all | the bindings are not on the **active** layer. Switch the pad back to the active profile's first layer, or restart the bridge (off/on) |
 | the console says `Keymap applied: False` | nothing needed writing, so the bindings *are* right — if keys are still dark, the pad is showing a different profile or layer |
 | lighting looks stale | the port **polls** `agent.list` every 2.5s; unlike macOS it does not subscribe to Herdr's event streams yet, so a state change can take up to ~2.5s to appear |
@@ -418,7 +491,7 @@ is the one sending a keystroke instead.
 | an `nc` complaint about `No such file or directory` | the socket is not where `HERDR_SOCKET_PATH` says: Herdr is not running, or it is in a different distro |
 | `~/…` in `HERDR_SOCKET_PATH` fails | nothing expands it: the WSL route runs no shell, so use the absolute `/home/you/…` |
 | the pad is dark and the window says `disabled` | the bridge is switched off. Toggle it back; the lights return immediately and the keymap is untouched |
-| one key stays dark but its agent is running | the 6 agent slots cover 6 agents; further agents have no key |
+| one key stays dark but its agent is running | the 6 agent slots cover 6 agents; the tray window lists them all, in the same order, and its rows jump to the agent |
 | everything is dark after switching profiles on the pad | see the keymap note above — the app binds the *active* profile's first layer |
 
 No hardware to hand? `MICROMANAGER_EMULATOR=1` runs against an in-process pad

@@ -4,14 +4,20 @@ using MicroManager.Core.Pad;
 
 namespace MicroManager.App.Services;
 
-/// The dial and joystick: effort and model for whichever agent has focus.
+/// The dial and joystick: scrolling, effort and model for whichever agent has
+/// focus.
+///
+/// The dial **scrolls** the focused pane by default — five lines per detent,
+/// moving the pane's own viewport wherever Herdr holds the output, and saying so
+/// where it does not — and goes back to stepping effort with `"dial": "effort"`
+/// in the config file.
 ///
 /// Claude Code takes orders directly — `/effort <level>` and `/model <name>`
-/// are commands, so the dial climbs an effort ladder and the joystick cycles a
-/// model list, both configurable. Codex has bindable effort commands but only a
-/// picker for models, so its dial sends the chords bound in `[tui.keymap]` and
-/// its joystick drives the `/model` picker: north opens it, north/south move,
-/// east confirms, west cancels.
+/// are commands, so in effort mode the dial climbs an effort ladder and the
+/// joystick cycles a model list, both configurable. Codex has bindable effort
+/// commands but only a picker for models, so its dial sends the chords bound in
+/// `[tui.keymap]` and its joystick drives the `/model` picker: north opens it,
+/// north/south move, east confirms, west cancels.
 ///
 /// Either way the joystick is working a list you cannot see from the pad, so
 /// every deflection also reports what it landed on — the macOS app puts a panel
@@ -48,7 +54,7 @@ public sealed class TuneController
     /// reads through to it so a config edit only needs an off/on toggle.
     public Func<KeyBindings> Bindings { get; set; } = static () => new KeyBindings();
 
-    // MARK: - Dial: effort
+    // MARK: - Dial: scroll, or effort
 
     /// A dial detent: +1 clockwise, -1 counter-clockwise.
     public async Task DialAsync(int step, CancellationToken ct = default)
@@ -56,6 +62,12 @@ public sealed class TuneController
         var focused = await FocusedPaneAsync(ct);
         if (focused is not { } target) return;
         var (agent, pane) = target;
+
+        if (Bindings().Dial == TuneLadder.DialMode.Scroll)
+        {
+            await ScrollAsync(step, pane, agent, ct);
+            return;
+        }
 
         switch (TuneLadder.KindFor(agent.Agent))
         {
@@ -91,6 +103,50 @@ public sealed class TuneController
                 OnError?.Invoke($"No effort control for {agent.Agent}.");
                 break;
         }
+    }
+
+    /// A detent's scroll, in whatever is running in the pane. Unlike effort this
+    /// is not agent-specific and needs no ladder and no per-pane state — but it
+    /// has two mechanisms, because a pane's output is either Herdr's to move or
+    /// the application's own.
+    ///
+    /// Herdr holds the scrollback for anything drawing to the normal screen, and
+    /// there a detent moves the viewport by an exact number of lines without
+    /// needing anything of the application at all — five lines, a nudge past a
+    /// wheel notch's three, with the rightward detent moving down and the
+    /// leftward one up.
+    /// A full-screen application draws to the alternate screen, and those rows
+    /// never reach the host's scrollback, so there is nothing to move: the dial
+    /// says so rather than sending a guess.
+    private async Task ScrollAsync(int step, string pane, HerdrAgent agent, CancellationToken ct)
+    {
+        var settings = Bindings().Scroll;
+
+        if (await HerdrClient.PaneScrollAsync(pane, ct) is { MaxOffsetFromBottom: > 0 } scroll)
+        {
+            var target = TuneLadder.ScrollTo(
+                scroll.OffsetFromBottom, scroll.MaxOffsetFromBottom, step, settings.Lines);
+            await HerdrClient.ScrollPaneAsync(pane, target, ct);
+            OnTune?.Invoke($"{agent.ShortName} · {target}/{scroll.MaxOffsetFromBottom} lines back");
+            return;
+        }
+
+        if (TuneLadder.ScrollKey(step, settings.Up, settings.Down) is not { } key)
+        {
+            // Nothing here can be scrolled, and nothing was configured to try.
+            // The pad can send no wheel and no page key, so an application that
+            // draws itself has to be told to stop drawing itself — see the dial
+            // docs for the switch.
+            OnTune?.Invoke($"{agent.ShortName} · nothing to scroll — a full-screen app keeps its own output");
+            return;
+        }
+
+        // A configured key is read as a one-line scroll, so a detent lands the
+        // same distance the pane's own scroll would.
+        var keys = new List<string>(settings.Lines);
+        for (var i = 0; i < settings.Lines; i++) keys.Add(key);
+        await HerdrClient.SendKeysAsync(pane, keys, ct);
+        OnTune?.Invoke($"{agent.ShortName} · scrolled {(step > 0 ? "down" : "up")} {settings.Lines} lines");
     }
 
     // MARK: - Joystick: model

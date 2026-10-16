@@ -70,4 +70,52 @@ public class TuneLadderTests
         Assert.Null(TuneLadder.StepFor(Pad.JoystickDirection.East));
         Assert.Null(TuneLadder.StepFor(Pad.JoystickDirection.West));
     }
+
+    /// Turning the dial right moves the viewport down, the way rolling a wheel
+    /// towards you does, so that is the detent the down key has to land on.
+    [Fact]
+    public void ScrollKeysFollowTheDetent()
+    {
+        Assert.Equal("f14", TuneLadder.ScrollKey(1, "f13", "f14"));
+        Assert.Equal("f13", TuneLadder.ScrollKey(-1, "f13", "f14"));
+    }
+
+    /// No key is configured by default, and the dial has to be able to tell
+    /// "nothing to send" from "something to send" — there is no key the pad can
+    /// send that a full-screen agent already understands.
+    [Fact]
+    public void NoConfiguredKeyMeansNothingIsSent()
+    {
+        Assert.Null(TuneLadder.ScrollKey(1, "", ""));
+        Assert.Null(TuneLadder.ScrollKey(-1, "   ", ""));
+    }
+
+    /// Right scrolls down towards the newest output, which is a smaller offset
+    /// from the bottom; left climbs back through the older output.
+    [Fact]
+    public void ScrollStepsByWholeLines()
+    {
+        Assert.Equal(3, TuneLadder.ScrollTo(6, 240, 1, 3));
+        Assert.Equal(6, TuneLadder.ScrollTo(3, 240, -1, 3));
+        Assert.Equal(0, TuneLadder.ScrollTo(1, 240, 1, 3));
+    }
+
+    /// A dial has ends: turning past either end of the scrollback pins rather
+    /// than wrapping round to the other.
+    [Fact]
+    public void ScrollPinsAtBothEnds()
+    {
+        Assert.Equal(0, TuneLadder.ScrollTo(2, 240, 1, 3));
+        Assert.Equal(240, TuneLadder.ScrollTo(239, 240, -1, 3));
+        Assert.Equal(240, TuneLadder.ScrollTo(240, 240, -1, 3));
+    }
+
+    /// A pane with no scrollback reports a maximum of zero — an alternate-screen
+    /// app — and there is no moving it: a detent must not go negative.
+    [Fact]
+    public void NoScrollbackStaysAtZero()
+    {
+        Assert.Equal(0, TuneLadder.ScrollTo(0, 0, 1, 3));
+        Assert.Equal(0, TuneLadder.ScrollTo(0, 0, -1, 3));
+    }
 }

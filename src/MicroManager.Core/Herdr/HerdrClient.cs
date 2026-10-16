@@ -95,6 +95,25 @@ public static class HerdrClient
         await RequestAsync("pane.send_text",
             new { pane_id = paneId, text }, ct);
 
+    /// The pane's viewport, or null when Herdr keeps no scrollback for it.
+    ///
+    /// Alternate-screen output never reaches the host's scrollback, so a
+    /// full-screen TUI reports `max_offset_from_bottom: 0` — there is nothing
+    /// here to move, and the app has to be asked to move itself instead.
+    public static async Task<PaneScrollInfo?> PaneScrollAsync(string paneId, CancellationToken ct = default)
+    {
+        var result = await RequestAsync<PaneGetResult>("pane.get", new { pane_id = paneId }, ct);
+        return result.Pane?.Scroll;
+    }
+
+    /// Moves a pane's viewport, in lines counted from the live bottom: 0 is the
+    /// newest output. Exact, and indifferent to what is running in the pane —
+    /// which is the point, since it needs no key the application understands.
+    public static async Task ScrollPaneAsync(string paneId, int offsetFromBottom,
+        CancellationToken ct = default) =>
+        await RequestAsync("pane.scroll",
+            new { pane_id = paneId, offset_from_bottom = offsetFromBottom }, ct);
+
     /// Focuses the tab after the focused one in its workspace, wrapping at the
     /// end. Tabs in other workspaces are left alone: cycling is a
     /// within-window gesture, not a window switcher.

@@ -8,8 +8,54 @@ console harness, so there is nothing else to keep in step.
 
 ## [Unreleased]
 
+### Added
+
+- **Reconnection.** The port now notices the pad leaving and opens it again.
+  `WinrtTransport` previously did not notice at all: its read loop retried a
+  failed read forever while the handle stayed non-zero, so `IsConnected` reported
+  a pad that was gone and the only symptom was a poll error every 2.5 s. A failed
+  read or write against a removed device is now taken as the pad leaving, and a
+  supervisor re-enumerates and reopens it (1 s, doubling to 10 s) — which is what
+  a Bluetooth pad going to sleep needs. Launching with no pad also keeps looking,
+  so plugging one in now starts working without a restart. The emulator is
+  deliberately **not** a reconnect fallback: a phantom pad on the lights is worse
+  than a window that says the pad is gone.
+- **Scrolling the pane, not the application.** The dial scrolls through Herdr's
+  `pane.scroll`, so a detent moves the viewport by an exact number of lines
+  (`"scroll": { "lines": 5 }`) and asks nothing of whatever is running in the
+  pane — five lines a detent, a nudge past the three a wheel notch covers.
+  Turned right the viewport moves **down** towards the newest output and turned
+  left up through the older output, the way rolling a wheel does. It follows that
+  it only reaches panes drawing to the **normal screen**, whose rows are in
+  Herdr's scrollback. An alternate-screen TUI leaves nothing to move, and nothing
+  can be sent to it either: Herdr has no mouse-wheel event anywhere in its
+  protocol and
+  no page key — `pageup` and every spelling of it come back `unsupported key`.
+  Such a pane gets a status line saying so. The ways out are `/tui default` in
+  Claude Code, `[tui] alternate_screen = "never"` in Codex, or naming the
+  application's own line-scroll keys in `"up"` / `"down"`.
+
+### Changed
+
+- The dial now **scrolls the focused pane** instead of stepping reasoning effort —
+  five lines per detent rather than one, and no longer dependent on the agent
+  understanding arrow keys. Scrolling is not agent-specific, so the dial now does
+  something in any agent's pane rather than only in Claude and Codex ones, and long
+  output is what a dial is good at. `"dial": "effort"` in the config file puts the
+  old behaviour back.
+- The dial's press slot is **given back**. An earlier build of this port bound it
+  to `AG19` to use the click itself; the app no longer listens for that code, so a
+  pad still carrying it gets the stock play/pause media key restored on the next
+  connect and the slot is left alone from then on.
+
 ### Fixed
 
+- The dial no longer sends `pageup` / `pagedown` where a pane keeps no
+  scrollback. Herdr rejects both as `unsupported key`, so every detent in a
+  full-screen pane failed and the dial looked dead. Nothing it accepts scrolls an
+  application-owned viewport: the protocol carries no mouse-wheel event and no
+  page key. Such panes now say so on the status line, and [the dial
+  documentation](docs/using-the-pad.md#the-dial) names the way out.
 - The window's status line now names the **pad emulator** when no pad could be
   opened, instead of reading "Connected" either way. The fallback warning was
   raised before the connected event that overwrote it, which left the window

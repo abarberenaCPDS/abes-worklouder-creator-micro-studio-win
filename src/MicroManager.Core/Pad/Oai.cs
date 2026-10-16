@@ -152,8 +152,13 @@ public static class Pad
     /// The dial and joystick emit keycodes like the keys do, so binding them
     /// to the AG codes above 12 turns rotations and deflections into the same
     /// `v.oai.hid` reports. These IDs never light — nothing is under them.
-    public const int DialUpId = 13;
-    public const int DialDownId = 14;
+    ///
+    /// The dial's encoder list is `[clockwise, counter-clockwise, press]`. Only
+    /// the two rotations are bound: the press is left as the pad shipped it —
+    /// the play/pause media key — so a click reaches the host as a keystroke and
+    /// is nothing to the app, the way the macOS app leaves it too.
+    public const int DialClockwiseId = 13;
+    public const int DialCounterClockwiseId = 14;
     public const int JoyNorthId = 15;
     public const int JoyWestId = 16;
     public const int JoySouthId = 17;

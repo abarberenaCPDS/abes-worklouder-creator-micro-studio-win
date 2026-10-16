@@ -54,6 +54,31 @@ public sealed record HerdrTab(
     int Number,
     bool Focused);
 
+/// One pane, as `pane.get` returns it.
+public sealed class PaneGetResult
+{
+    public PaneInfo? Pane { get; set; }
+}
+
+public sealed class PaneInfo
+{
+    public string? PaneId { get; set; }
+
+    /// Absent when the pane keeps no scrollback, which is what an
+    /// alternate-screen app reports.
+    public PaneScrollInfo? Scroll { get; set; }
+}
+
+/// A pane's viewport. Offsets count from the live bottom, so
+/// `OffsetFromBottom == 0` is the newest output and `MaxOffsetFromBottom` is as
+/// far back as the pane's scrollback goes.
+public sealed class PaneScrollInfo
+{
+    public int OffsetFromBottom { get; set; }
+    public int MaxOffsetFromBottom { get; set; }
+    public int ViewportRows { get; set; }
+}
+
 public sealed class AgentListResult
 {
     public List<HerdrAgent> Agents { get; set; } = new();

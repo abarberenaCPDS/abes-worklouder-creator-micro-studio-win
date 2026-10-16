@@ -14,6 +14,8 @@ using System.Text.Json;
 ///         "12": "Run but pull",
 ///         "10+11": "Summarise what you are working on"
 ///       },
+///       "dial": "scroll",
+///       "scroll": { "lines": 5 },
 ///       "claude": { "models": ["fable", "opus"] },
 ///       "codex":  { "models": ["gpt-5.6-sol", "gpt-5.6-codex"] }
 ///     }
@@ -23,12 +25,39 @@ using System.Text.Json;
 /// halves separately. Keys the file does not mention keep their defaults —
 /// 9 and 12 have the defaults below, the wide key defaults to the voice key.
 /// An empty string unbinds a key outright.
+///
+/// `"dial"` is `"scroll"` or `"effort"` and decides what a turn of the dial
+/// does; see `TuneLadder.DialMode`.
+///
+/// `"scroll"` says how a detent scrolls: `"lines"` is how far Herdr moves a pane
+/// whose output it holds, and `"up"` / `"down"` are the keys sent to a pane that
+/// draws itself — empty by default, because Herdr can send no wheel and no page
+/// key. Turning the dial right sends `"down"` and left sends `"up"`; see
+/// `TuneLadder.ScrollSettings`.
 public sealed class KeyBindings : IEquatable<KeyBindings>
 {
     public Dictionary<int, string> Texts { get; } = new();
     public List<string> ClaudeModels { get; } = new();
     public List<string> ClaudeEfforts { get; } = new();
     public List<string> CodexModels { get; } = new();
+
+    /// What a turn of the dial does. Scrolling by default: a dial is the one
+    /// control on the pad that is good at long output, and effort is one config
+    /// line away from coming back.
+    public TuneLadder.DialMode Dial { get; }
+
+    /// How the dial scrolls, when it is scrolling.
+    public TuneLadder.ScrollSettings Scroll { get; }
+
+    /// The word that selects a dial mode, or null when it is not one. Both the
+    /// file and the docs use these, so they live in one place.
+    public static TuneLadder.DialMode? DialModeNamed(string? name) =>
+        name?.Trim().ToLowerInvariant() switch
+        {
+            "scroll" => TuneLadder.DialMode.Scroll,
+            "effort" => TuneLadder.DialMode.Effort,
+            _ => null,
+        };
 
     public static readonly Dictionary<int, string> Defaults = new()
     {
@@ -44,15 +73,19 @@ public sealed class KeyBindings : IEquatable<KeyBindings>
         foreach (var (k, v) in Defaults) Texts[k] = v;
         ClaudeModels.AddRange(DefaultClaudeModels);
         ClaudeEfforts.AddRange(DefaultClaudeEfforts);
+        Dial = TuneLadder.DialMode.Scroll;
+        Scroll = TuneLadder.ScrollSettings.Default;
     }
 
     public KeyBindings(Dictionary<int, string> texts, List<string> claudeModels, List<string> claudeEfforts,
-        List<string> codexModels)
+        List<string> codexModels, TuneLadder.DialMode dial, TuneLadder.ScrollSettings scroll)
     {
         foreach (var (k, v) in texts) Texts[k] = v;
         ClaudeModels.AddRange(claudeModels);
         ClaudeEfforts.AddRange(claudeEfforts);
         CodexModels.AddRange(codexModels);
+        Dial = dial;
+        Scroll = scroll;
     }
 
     /// The string bound to a key, or null when the key does something else.
@@ -131,7 +164,39 @@ public sealed class KeyBindings : IEquatable<KeyBindings>
             codexModels = StringArray(codex, "models");
         }
 
-        return new KeyBindings(texts, claudeModels, claudeEfforts, codexModels);
+        // An unrecognised word keeps the default rather than leaving the dial
+        // dead — the same forgiving reading the rest of this file gets.
+        var dial = TuneLadder.DialMode.Scroll;
+        if (root.TryGetProperty("dial", out var dialProp) && dialProp.ValueKind == JsonValueKind.String &&
+            DialModeNamed(dialProp.GetString()) is { } named)
+        {
+            dial = named;
+        }
+
+        var scroll = TuneLadder.ScrollSettings.Default;
+        if (root.TryGetProperty("scroll", out var scrollProp) && scrollProp.ValueKind == JsonValueKind.Object)
+        {
+            var lines = scroll.Lines;
+            if (scrollProp.TryGetProperty("lines", out var linesProp) &&
+                linesProp.ValueKind == JsonValueKind.Number &&
+                linesProp.TryGetInt32(out var parsedLines) && parsedLines > 0)
+            {
+                lines = parsedLines;
+            }
+
+            scroll = new TuneLadder.ScrollSettings(
+                lines,
+                KeyName(scrollProp, "up", scroll.Up),
+                KeyName(scrollProp, "down", scroll.Down));
+        }
+
+        return new KeyBindings(texts, claudeModels, claudeEfforts, codexModels, dial, scroll);
+
+        static string KeyName(JsonElement obj, string name, string fallback) =>
+            obj.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String &&
+            !string.IsNullOrWhiteSpace(value.GetString())
+                ? value.GetString()!.Trim()
+                : fallback;
 
         static List<string> StringArray(JsonElement obj, string key) =>
             obj.TryGetProperty(key, out var arr) && arr.ValueKind == JsonValueKind.Array
@@ -154,8 +219,11 @@ public sealed class KeyBindings : IEquatable<KeyBindings>
         Texts.Count == other.Texts.Count && !Texts.Except(other.Texts).Any() &&
         ClaudeModels.SequenceEqual(other.ClaudeModels) &&
         ClaudeEfforts.SequenceEqual(other.ClaudeEfforts) &&
-        CodexModels.SequenceEqual(other.CodexModels);
+        CodexModels.SequenceEqual(other.CodexModels) &&
+        Dial == other.Dial &&
+        Scroll == other.Scroll;
 
     public override bool Equals(object? obj) => Equals(obj as KeyBindings);
-    public override int GetHashCode() => HashCode.Combine(Texts.Count, ClaudeModels, ClaudeEfforts, CodexModels);
+    public override int GetHashCode() =>
+        HashCode.Combine(Texts.Count, ClaudeModels, ClaudeEfforts, CodexModels, Dial, Scroll);
 }

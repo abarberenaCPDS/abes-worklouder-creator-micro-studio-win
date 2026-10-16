@@ -127,4 +127,78 @@ public class KeyBindingsTests
         var bindings = KeyBindings.Parse(System.Text.Encoding.UTF8.GetBytes(json));
         Assert.Equal(new[] { "fable", "opus", "sonnet", "haiku" }, bindings.ClaudeModels);
     }
+
+    [Fact]
+    public void TheDialScrollsByDefault()
+    {
+        Assert.Equal(TuneLadder.DialMode.Scroll, new KeyBindings().Dial);
+        Assert.Equal(TuneLadder.DialMode.Scroll,
+            KeyBindings.Parse(System.Text.Encoding.UTF8.GetBytes("{}")).Dial);
+    }
+
+    [Fact]
+    public void TheDialCanBePutBackOnEffort()
+    {
+        var json = """{ "dial": "effort" }""";
+        var bindings = KeyBindings.Parse(System.Text.Encoding.UTF8.GetBytes(json));
+        Assert.Equal(TuneLadder.DialMode.Effort, bindings.Dial);
+    }
+
+    /// Case and spacing are the file author's business, not ours.
+    [Theory]
+    [InlineData("scroll", TuneLadder.DialMode.Scroll)]
+    [InlineData("Effort", TuneLadder.DialMode.Effort)]
+    [InlineData("  effort  ", TuneLadder.DialMode.Effort)]
+    [InlineData("wiggle", null)]
+    [InlineData("", null)]
+    public void DialModeWordsAreRead(string word, TuneLadder.DialMode? expected) =>
+        Assert.Equal(expected, KeyBindings.DialModeNamed(word));
+
+    /// A word we do not know is not worth a dead dial, so it keeps the default.
+    [Fact]
+    public void AnUnknownDialModeKeepsTheDefault()
+    {
+        var json = """{ "dial": "wiggle" }""";
+        var bindings = KeyBindings.Parse(System.Text.Encoding.UTF8.GetBytes(json));
+        Assert.Equal(TuneLadder.DialMode.Scroll, bindings.Dial);
+    }
+
+    [Fact]
+    public void AMalformedFileStillHasAWorkingDial() =>
+        Assert.Equal(TuneLadder.DialMode.Scroll,
+            KeyBindings.Parse(System.Text.Encoding.UTF8.GetBytes("not json {")).Dial);
+
+    [Fact]
+    public void TheDialScrollsFiveLinesAndSendsNothingByDefault()
+    {
+        var scroll = new KeyBindings().Scroll;
+        Assert.Equal(5, scroll.Lines);
+        // There is no fallback key to send: Herdr rejects `pageup` and every
+        // spelling of it, and cannot synthesise a wheel event.
+        Assert.Equal("", scroll.Up);
+        Assert.Equal("", scroll.Down);
+    }
+
+    [Fact]
+    public void ScrollSettingsComeFromTheFile()
+    {
+        var json = """{ "scroll": { "lines": 5, "up": "ctrl+u", "down": "ctrl+d" } }""";
+        var scroll = KeyBindings.Parse(System.Text.Encoding.UTF8.GetBytes(json)).Scroll;
+        Assert.Equal(5, scroll.Lines);
+        Assert.Equal("ctrl+u", scroll.Up);
+        Assert.Equal("ctrl+d", scroll.Down);
+    }
+
+    /// Only what the file names changes, and a setting that makes no sense is
+    /// not worth a dial that cannot move: a zero or negative step, and a blank
+    /// key name, each keep their default.
+    [Fact]
+    public void ScrollSettingsFillInFromTheDefaults()
+    {
+        var json = """{ "scroll": { "lines": 0, "up": "  f13  " } }""";
+        var scroll = KeyBindings.Parse(System.Text.Encoding.UTF8.GetBytes(json)).Scroll;
+        Assert.Equal(5, scroll.Lines);
+        Assert.Equal("f13", scroll.Up);
+        Assert.Equal("", scroll.Down);
+    }
 }

@@ -65,7 +65,20 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
     private readonly CancellationTokenSource _cts = new();
     private readonly TuneController _tune;
     private Task? _pollTask;
-    private RpcDevice? _rpcDevice;
+    private Task? _supervisorTask;
+
+    /// Swapped by the supervisor when the pad comes back, so it is read from
+    /// the read thread, the poll loop and the window all at once.
+    private volatile RpcDevice? _rpcDevice;
+
+    /// Released when the current device goes away. The supervisor waits on it
+    /// rather than polling, so a healthy pad costs nothing.
+    private readonly SemaphoreSlim _deviceLost = new(0);
+
+    /// Before reopening, then doubling to the cap. A pad that is asleep or out
+    /// of range comes back on its own schedule, so this never gives up.
+    private static readonly TimeSpan FirstRetryDelay = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromSeconds(10);
 
     /// The agents from the last poll. Read on the device's read thread when a
     /// key is pressed, so it is only ever replaced wholesale, never mutated.
@@ -98,7 +111,9 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
     /// window shows this, so a missing — or asleep, over Bluetooth — pad is
     /// never mistaken for a working one.
     /// </summary>
-    public bool UsingEmulator { get; private set; }
+    public bool UsingEmulator => _usingEmulator;
+
+    private volatile bool _usingEmulator;
 
     /// Switching the bridge off clears the lights but deliberately leaves the
     /// keymap alone: rebinding is a flash write, and the keys light instantly on
@@ -199,6 +214,17 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
             OnError?.Invoke($"Connection failed: {ex.Message}");
             throw;
         }
+        finally
+        {
+            // Started whether the first attempt worked or not, so a pad that
+            // turns up later — plugged in, or woken from Bluetooth sleep — is
+            // picked up without a restart. Not when the emulator was asked for
+            // explicitly: then a real pad is not wanted.
+            if (!_useEmulator)
+            {
+                _supervisorTask = Task.Run(SuperviseAsync);
+            }
+        }
     }
 
     /// <summary>
@@ -223,7 +249,7 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
                 // Not announced here: this runs before the connected event, and
                 // the status it would set is overwritten the moment the app
                 // reports itself connected. The window reads this flag instead.
-                UsingEmulator = true;
+                _usingEmulator = true;
             }
         }
 
@@ -238,13 +264,118 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
         var device = new RpcDevice(transport);
         device.OnDisconnect += (_, _) =>
         {
+            // A device that has already been replaced must not signal: closing
+            // the old one would otherwise send the supervisor looking for a pad
+            // it is already holding.
+            if (!ReferenceEquals(_rpcDevice, device)) return;
+
             // Repaint from scratch once the pad is back: what it was showing
             // before it went away is not what it is showing now.
             _fingerprint = null;
             OnDeviceDisconnected?.Invoke();
+            _deviceLost.Release();
         };
         device.OnNotification += (_, notification) => OnNotification(notification);
         return device;
+    }
+
+    // MARK: - Reconnecting
+
+    /// Waits for the pad to go away, then gets it back. A cable being pulled and
+    /// a Bluetooth link dropping look the same from here — the device node
+    /// disappears either way — so one path covers both.
+    private async Task SuperviseAsync()
+    {
+        var ct = _cts.Token;
+
+        // Launched with no pad, with the emulator standing in: look straight
+        // away, so plugging one in or waking a sleeping one just starts working.
+        if (_usingEmulator) _deviceLost.Release();
+
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                await _deviceLost.WaitAsync(ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { break; }
+
+            await ReconnectAsync(ct).ConfigureAwait(false);
+        }
+    }
+
+    /// Reopens the pad, retrying until it is back. The emulator is deliberately
+    /// not a fallback here: quietly putting a phantom pad on the lights is worse
+    /// than the window saying the pad is gone.
+    private async Task ReconnectAsync(CancellationToken ct)
+    {
+        var delay = FirstRetryDelay;
+        var announced = false;
+
+        while (!ct.IsCancellationRequested)
+        {
+            // Already back, or never actually lost.
+            if (_rpcDevice is { IsConnected: true }) return;
+
+            if (!announced)
+            {
+                announced = true;
+                Activity("Pad went away — looking for it");
+            }
+
+            try
+            {
+                var device = CreateDevice(new WinrtTransport());
+                await device.ConnectAsync(ct).ConfigureAwait(false);
+
+                var previous = _rpcDevice;
+                _rpcDevice = device;
+                _usingEmulator = false;
+                _fingerprint = null;
+
+                // The replacement is in place first, so the old device's
+                // disconnect is ignored rather than starting this over.
+                if (previous is not null)
+                {
+                    try { previous.Disconnect(); } catch { }
+                }
+
+                OnDeviceConnected?.Invoke();
+
+                try
+                {
+                    await KeymapManager.ApplyAsync(device).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    OnError?.Invoke($"Keymap binding failed: {ex.Message}");
+                }
+
+                Activity("Pad reconnected");
+                return;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (DeviceNotConnectedException)
+            {
+                // Nothing on the bus yet. That is the ordinary state while a pad
+                // is asleep or unplugged, so it earns no error.
+            }
+            catch (Exception ex)
+            {
+                OnError?.Invoke($"Reconnect failed: {ex.Message}");
+            }
+
+            try
+            {
+                await Task.Delay(delay, ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) { return; }
+
+            delay = delay * 2 > MaxRetryDelay ? MaxRetryDelay : delay * 2;
+        }
     }
 
     public async Task StopAsync()
@@ -254,6 +385,10 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
         {
             try { await _pollTask; } catch { }
         }
+        if (_supervisorTask is not null)
+        {
+            try { await _supervisorTask; } catch { }
+        }
 
         await AllLightsOffAsync();
 
@@ -262,17 +397,21 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
 
     private async Task PollOnceAsync(CancellationToken ct)
     {
-        if (_rpcDevice is not { } device) return;
-
+        // Herdr is still reachable with no pad attached, so the window's agent
+        // list keeps updating while the supervisor looks for the pad.
         var agents = await HerdrClient.ListAgentsAsync(ct);
         _agents = agents;
+
+        // The agent list is what the window shows, so it goes out every tick.
+        OnAgentStateChanged?.Invoke(agents);
+
+        // Nothing to paint on. Writing here would only earn an error a tick,
+        // and the supervisor is already reopening the pad.
+        if (_rpcDevice is not { IsConnected: true } device) return;
 
         var live = IsEnabled && agents.Count > 0;
         var aggregate = live ? StatusMapper.Aggregate(agents, _config) : null;
         var threads = live ? BuildThreads(agents) : LightingEditor.AllOffThreads();
-
-        // The agent list is what the window shows, so it goes out every tick.
-        OnAgentStateChanged?.Invoke(agents);
 
         // Hand-driven lights: Herdr keeps being tracked, but the picture is left
         // exactly as the console left it.
@@ -480,9 +619,9 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
                     Activity("Voice key — no speech engine on Windows yet");
                 }
             }
-            else if (index == Pad.DialUpId || index == Pad.DialDownId)
+            else if (index == Pad.DialClockwiseId || index == Pad.DialCounterClockwiseId)
             {
-                await _tune.DialAsync(index == Pad.DialUpId ? 1 : -1, _cts.Token);
+                await _tune.DialAsync(index == Pad.DialClockwiseId ? 1 : -1, _cts.Token);
             }
             else if (Pad.JoystickDirectionForKeyId(index) is { } direction)
             {
@@ -566,6 +705,10 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
             if (_pollTask is not null)
             {
                 try { await _pollTask; } catch { }
+            }
+            if (_supervisorTask is not null)
+            {
+                try { await _supervisorTask; } catch { }
             }
             if (_rpcDevice is not null)
             {

@@ -4,6 +4,7 @@ using MicroManager.Core.Keymap;
 using MicroManager.Core.Pad;
 using MicroManager.Core.Transport;
 using MicroManager.Transport.Winrt;
+using System.Text.Json;
 
 Console.WriteLine($"=== Micro Manager Console Test (v{MicroManagerInfo.Version}) ===");
 Console.WriteLine();
@@ -74,6 +75,31 @@ try
 catch (Exception ex)
 {
     Console.WriteLine($"  Keymap apply failed: {ex.Message}");
+}
+
+// `--watch` prints every notification the pad pushes. It is the only way to see
+// raw key traffic: the firmware answers `{"ok":1}` to anything, and a key bound
+// to the wrong code simply never speaks. The macOS Inspector has a traffic log
+// for this; the console is the port's stand-in.
+if (args.Contains("--watch"))
+{
+    var encoders = "unreadable";
+    try
+    {
+        var config = await KeymapManager.ReadAsync(rpcDevice);
+        encoders = KeymapManager.ActiveLayerLayout(config)?["encoders"]?.ToJsonString() ?? "absent";
+    }
+    catch (Exception ex)
+    {
+        encoders = $"unreadable: {ex.Message}";
+    }
+
+    Console.WriteLine($"\nActive layer encoders (CW, CCW, press): {encoders}");
+    Console.WriteLine("\n--- watching pad notifications (Ctrl+C to stop) ---");
+    rpcDevice.OnNotification += (_, n) =>
+        Console.WriteLine($"  {n.Method}: {JsonSerializer.Serialize(n.Parameters)}");
+    await Task.Delay(Timeout.InfiniteTimeSpan);
+    return;
 }
 
 await rpcDevice.DisposeAsync();

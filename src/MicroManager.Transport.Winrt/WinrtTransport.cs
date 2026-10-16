@@ -19,6 +19,14 @@ public sealed class WinrtTransport : IWlTransport, IDisposable
     private IntPtr _writeHandle = IntPtr.Zero;
     private readonly TaskCompletionSource<bool> _connectTcs = new();
 
+    /// Consecutive failed reads before the pad is declared gone. A healthy read
+    /// blocks until the pad sends something, so an error is never routine — but
+    /// one alone is not proof, so a short run of them is required.
+    private const int ReadFailureLimit = 20;
+
+    private int _readFailures;
+    private int _disconnectRaised;
+
     public string? Product => null; // P/Invoke transport does not expose product name
     public int? ProductId => null;  // would require reading device properties
     public string? Transport => "win32-hid";
@@ -80,18 +88,47 @@ public sealed class WinrtTransport : IWlTransport, IDisposable
 
     public void Disconnect()
     {
-        if (_handle != IntPtr.Zero)
-        {
-            Native.CloseHandle(_handle);
-            _handle = IntPtr.Zero;
-        }
-        if (_writeHandle != IntPtr.Zero)
-        {
-            Native.CloseHandle(_writeHandle);
-            _writeHandle = IntPtr.Zero;
-        }
-        OnDisconnect?.Invoke(this, string.Empty);
+        CloseHandles();
+        RaiseDisconnected(string.Empty);
     }
+
+    /// <summary>
+    /// The device went away without us asking — unplugged, or a Bluetooth pad
+    /// that dropped off the bus. Both handles are closed and the disconnect is
+    /// reported once, so whoever opened this transport can re-enumerate and open
+    /// a fresh one: the old handle can never be revived.
+    /// </summary>
+    private void SignalLost(string reason)
+    {
+        CloseHandles();
+        RaiseDisconnected(reason);
+    }
+
+    /// Both handles, taken atomically so the read loop and a failed write cannot
+    /// close the same one twice.
+    private void CloseHandles()
+    {
+        var read = Interlocked.Exchange(ref _handle, IntPtr.Zero);
+        if (read != IntPtr.Zero) Native.CloseHandle(read);
+
+        var write = Interlocked.Exchange(ref _writeHandle, IntPtr.Zero);
+        if (write != IntPtr.Zero) Native.CloseHandle(write);
+    }
+
+    /// Reported once per connection: closing the handles and losing the device
+    /// both end up here, and a reply that the pad is gone is worth saying once.
+    private void RaiseDisconnected(string reason)
+    {
+        if (Interlocked.Exchange(ref _disconnectRaised, 1) == 0)
+            OnDisconnect?.Invoke(this, reason);
+    }
+
+    /// Win32 errors that mean the device node is gone, rather than the read
+    /// having failed for a reason that will pass.
+    private static bool IsDeviceGone(int error) =>
+        error is Native.ERROR_DEVICE_NOT_CONNECTED
+            or Native.ERROR_NO_SUCH_DEVICE
+            or Native.ERROR_INVALID_HANDLE;
 
     public Task SendReportAsync(byte[] report, CancellationToken cancellationToken = default)
     {
@@ -101,7 +138,15 @@ public sealed class WinrtTransport : IWlTransport, IDisposable
         var written = 0;
         var ok = Native.WriteFile(_writeHandle, report, report.Length, out written, IntPtr.Zero);
         if (!ok)
-            throw new IOException($"WriteFile failed: {Marshal.GetLastWin32Error()}");
+        {
+            var error = Marshal.GetLastWin32Error();
+
+            // A write can be the first thing to notice: the poll writes every
+            // 2.5 s whether or not the pad has anything to say.
+            if (IsDeviceGone(error)) SignalLost($"write failed ({error})");
+
+            throw new IOException($"WriteFile failed: {error}");
+        }
 
         return Task.CompletedTask;
     }
@@ -115,13 +160,29 @@ public sealed class WinrtTransport : IWlTransport, IDisposable
             {
                 var read = 0;
                 var ok = Native.ReadFile(_handle, buffer, buffer.Length, out read, IntPtr.Zero);
-                if (!ok || read == 0)
+                if (!ok)
+                {
+                    var error = Marshal.GetLastWin32Error();
+                    if (IsDeviceGone(error) || ++_readFailures >= ReadFailureLimit)
+                    {
+                        OnDeviceLog?.Invoke(this, $"Read failed ({error}); the pad looks gone");
+                        SignalLost($"read failed ({error})");
+                        return;
+                    }
+
+                    await Task.Delay(50, cancellationToken);
+                    continue;
+                }
+
+                // The firmware answers with empty reads between messages, which
+                // is not a fault — only a failure is.
+                if (read == 0)
                 {
                     await Task.Delay(50, cancellationToken);
                     continue;
                 }
 
-                var text = Encoding.UTF8.GetString(buffer, 0, read);
+                _readFailures = 0;
                 OnReportReceived?.Invoke(this, buffer);
             }
         }

@@ -28,9 +28,23 @@ public static class KeymapManager
         "KV_OAI_AG12",
     };
 
-    /// The dial: clockwise, counter-clockwise. Its press keeps whatever it
-    /// already does — that click is not this app's to take.
+    /// The dial: clockwise, counter-clockwise. The third slot — the press — is
+    /// left exactly as the pad arrived with it, which is the macOS app's
+    /// behaviour: a stock pad ships that slot as the play/pause media key, and
+    /// the port takes nothing from it.
     public static readonly string[] DialCodes = { "KV_OAI_AG13", "KV_OAI_AG14" };
+
+    /// The stock key for the dial's press. The port leaves that slot alone, so
+    /// anything else found there is somebody else's configuration — with the one
+    /// exception below.
+    public const string StockDialPressCode = "KC_MPLY";
+
+    /// An earlier build of this port bound the dial's press to `AG19` to use the
+    /// click itself. That left the slot carrying a code nothing else writes and
+    /// the app no longer listens for, so a pad still holding it gets the stock
+    /// key back on the next connect: a value this port is known to have written
+    /// is the one thing to undo, and this is where it is noticed.
+    public const string FormerDialPressCode = "KV_OAI_AG19";
 
     /// The joystick's four cardinal sectors, matched by the angle at their
     /// centre in the radial map. Diagonal sectors are left alone.
@@ -143,9 +157,16 @@ public static class KeymapManager
         var layout = ActiveLayerLayout(config);
         if (layout is null) return false;
         if (AsArray(layout["encoders"], out var encoders) &&
-            encoders.FirstOrDefault() is JsonArray dial && dial.Count >= 2 &&
-            (dial[0]?.GetValue<string>() != DialCodes[0] || dial[1]?.GetValue<string>() != DialCodes[1]))
-            return false;
+            encoders.FirstOrDefault() is JsonArray dial)
+        {
+            if (dial.Count >= 2 &&
+                (dial[0]?.GetValue<string>() != DialCodes[0] || dial[1]?.GetValue<string>() != DialCodes[1]))
+                return false;
+
+            // A pad an earlier build of this port already wrote `AG19` into is
+            // not as it was found: the repair in `Apply` puts the stock key back.
+            if (dial.Count >= 3 && dial[2]?.GetValue<string>() == FormerDialPressCode) return false;
+        }
 
         if (AsObject(layout["joystick"], out var joystick) &&
             AsArray(joystick["sectors"], out var sectors))
@@ -196,12 +217,16 @@ public static class KeymapManager
                 keymap[row].AsArray()[column] = code;
         }
 
-        // The dial's two rotation slots; its press stays untouched.
+        // The dial's rotations. Its press is the third slot, and is left as it
+        // was found — except for the code an earlier build of this port wrote
+        // there, which is given back to the stock media key.
         if (AsArray(layout["encoders"], out var encoders) &&
             encoders.FirstOrDefault() is JsonArray dial && dial.Count >= 2)
         {
             dial[0] = DialCodes[0];
             dial[1] = DialCodes[1];
+            if (dial.Count >= 3 && dial[2]?.GetValue<string>() == FormerDialPressCode)
+                dial[2] = StockDialPressCode;
         }
 
         // The joystick's cardinal sectors; diagonals keep their keycodes.
