@@ -10,6 +10,10 @@ see [`../PLAN.md`](../PLAN.md).
 
 - A **Creator Micro 2** (vendor `0x303A`). Firmware `0.6.3` is what this port was
   written and tested against.
+- **Either connection works.** The app matches the pad's vendor collection, not
+  the cable, so USB and Bluetooth are found the same way and unplugging the pad
+  changes nothing. Pairing is done in Windows Settings, as for any Bluetooth
+  device.
 - A running **Herdr** server with at least one agent pane. The pad shows
   `agent.list` and nothing else: with Herdr unreachable the app still drives the
   pad, but every key goes dark and the status line reports the error. On Windows
@@ -402,8 +406,8 @@ is the one sending a keystroke instead.
 
 | what you see | what it means |
 |---|---|
-| "Creator Micro 2 not found; using the pad emulator." | the vendor collection did not open — wrong device, or Work Louder's `Input` app holding it. The app falls back to the emulator rather than exiting |
-| the pad is on **Bluetooth** | the port drives the pad over USB only for now, so it falls back to the emulator as above. Plug in the cable, or see [Not here yet](#not-here-yet) |
+| the status names the **pad emulator** | the vendor collection did not open — wrong device, Work Louder's `Input` app holding it, or a Bluetooth pad that is asleep. The app falls back to the emulator rather than exiting |
+| the pad dropped off (slept, or out of range) and never came back | nothing reconnects yet, so restart the app. See [`../PLAN.md` Phase 4](../PLAN.md#phase-4--bluetooth) |
 | keys never light at all | the bindings are not on the **active** layer. Switch the pad back to the active profile's first layer, or restart the bridge (off/on) |
 | the console says `Keymap applied: False` | nothing needed writing, so the bindings *are* right — if keys are still dark, the pad is showing a different profile or layer |
 | lighting looks stale | the port **polls** `agent.list` every 2.5s; unlike macOS it does not subscribe to Herdr's event streams yet, so a state change can take up to ~2.5s to appear |
@@ -432,11 +436,6 @@ These exist on macOS and are **not** in this port; the plan is in
 - the **stack** key and the **land** key — both fall flat, and the keys do nothing
 - the **voice** key — Superwhisper is macOS-only, so the wide key only works when
   you bind text to it
-- **Bluetooth** — the pad works over Bluetooth on macOS, but the port drives it
-  over USB only. The device exposes the same vendor collection either way; what
-  has not been measured is whether the Windows HID stack publishes it over
-  Bluetooth, so the work starts with that measurement. See
-  [`../PLAN.md` Phase 4](../PLAN.md#phase-4--bluetooth)
 - the **Inspector** debug UI, and the emulator's own window — the lights console
   covers the Inspector's colour and effect controls, but not its traffic log, raw
   JSON-RPC console, key walk or "resend whole pad"

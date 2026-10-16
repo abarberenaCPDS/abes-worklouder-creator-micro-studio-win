@@ -20,7 +20,7 @@ Status: **Phase 2 in progress** — the MAUI app builds and launches via F5 (VS 
 - [ ] Upstream issue — propose the `windows/` subdirectory before Phase 2 grows
 - [ ] Phase 3 (parity) — stack float window, land panel, emulator window, wide-key default. The lights console covers the macOS Inspector's colour and effect controls only; its traffic log, raw JSON-RPC console, key walk and "resend whole pad" are still unported.
 - [ ] Phase 3 (packaging/CI) — unpackaged zip v1, `windows-latest` CI job publishing `MicroManager-win-x64.zip`
-- [ ] Phase 4 (Bluetooth) — port the macOS Bluetooth support. Discovery first, because the port's transport already matches vendor-only + usage pair and may need no change at all; then diagnostics and reconnect. See [Phase 4](#phase-4--bluetooth).
+- [x] Phase 4 (Bluetooth) — no work needed: it already works. `WinrtTransport` matches on vendor + usage pair over the *HID class*, never on the bus, so it finds the vendor collection over USB and Bluetooth alike; verified on the real pad with the cable out (`Connected via win32-hid`, `battery: 99`, `is_charging: false`). What is missing is not Bluetooth support but **reconnection** — a drop leaves the app dead until it is restarted. See [Phase 4](#phase-4--bluetooth).
 
 Goal: an MVP tray app for Windows 11 that does what the macOS menu-bar app does — light pad keys per Herdr agent state and jump to agents on key press — then reach full parity. MVP first, full parity after. Code lands in `windows/` as a separate solution alongside the Swift package.
 
@@ -106,107 +106,43 @@ Stack float window, land panel, emulator window, Inspector (deferrable), wide-ke
 
 ## Phase 4 — Bluetooth
 
-**This is parity work, not a new feature.** macOS already drives the pad over
-Bluetooth: `Sources/WLKit/WLDevice.swift:143-161` matches on **vendor only**,
-because over Bluetooth the pad is a *single* HID device whose primary usage is
-keyboard with the vendor collection alongside it in its usage pairs — and
-`docs/hacking.md:78-85` documents the same trap for anyone using IOKit directly.
-The vendor JSON-RPC channel, the `0x06` report framing and the keymap flash
-writes are identical over Bluetooth. Only the enumeration shape changes.
+**Verified on the real pad — there is nothing to implement.** The port already
+drives the pad over Bluetooth, with no Bluetooth-specific code anywhere, and that
+is what the transport was built to do rather than luck.
 
-So the open question is narrow and Windows-side: does the Windows HID stack
-publish that vendor collection as an openable HID interface?
+`WinrtTransport.FindDevicePath` does *not* enumerate USB. It walks the **HID
+class** with SetupAPI and accepts an interface only when `HidD_GetAttributes`
+reports vendor `0x303A` **and** `HidP_GetCaps` reports usage page `0xFF00` /
+usage `1`. It never checks the product id and never looks at the bus, so it finds
+the vendor collection over USB and over HID-over-GATT alike.
 
-### Why the port may already work unchanged
+Confirmed by the console harness with the cable out, on battery:
 
-`WinrtTransport.FindDevicePath` (`src/MicroManager.Transport.Winrt/WinrtTransport.cs`)
-does **not** enumerate USB. It walks the *HID class* with SetupAPI and accepts an
-interface only when `HidD_GetAttributes` reports vendor `0x303A` **and**
-`HidP_GetCaps` reports usage page `0xFF00` / usage `1`. It never checks the
-product id, and it skips the keyboard collection because the caps do not match —
-which is exactly the vendor-only, usage-pair strategy macOS needs for Bluetooth.
-Windows gives each top-level collection its own device interface (`…&colNN`), so
-if the BLE pad exposes a vendor collection the existing code should find and open
-it as it stands. **Expect no transport change; prove it with 4.1 before writing
-any.**
+```
+Connected via win32-hid
+device.status: {"version":"0.6.3","profile_index":1,"layer_index":1,"battery":99,"is_charging":false}
+```
 
-### 4.1 Spike first: what does Windows actually see?
+`battery: 99` / `is_charging: false` is the corroboration — the link cannot be
+USB. macOS arrives at the same place by matching on vendor alone, for the same
+reason: over Bluetooth the pad is a *single* HID device whose primary usage is
+keyboard, with the vendor collection alongside it in its usage pairs
+(`Sources/WLKit/WLDevice.swift:143-161`, `docs/hacking.md:78-85`).
 
-Everything below branches on one measurement, and it cannot be settled from
-source.
+So there is no Bluetooth feature to build. What remains is not support but
+**recovery**, and it is the same code a USB replug would need:
 
-Extend `src/MicroManager.HidSpike` — the Phase 0 probe, which already enumerates
-HID interfaces — to print **every** interface rather than only the matching one:
-device path, `HidD_GetAttributes` (vendor/product/version), `HidP_GetCaps` (usage
-page, usage, in/out/feature report byte lengths), and whether
-`CreateFile(GENERIC_READ | GENERIC_WRITE)` succeeds. Mind the existing guard: the
-probe deliberately filters to the Work Louder vendor *before* calling
-`HidD_GetPreparsedData`, because that call can fault on other HID devices
-(`Program.cs:249-255`) — keep it, or make the full sweep opt-in with `--all`.
+- **Nothing reconnects.** `InitializeAsync` runs once at launch and `IsEnabled`
+  only flips a flag, so a drop — a sleeping pad, or walking out of range — leaves
+  the app dead until it is restarted. This is the one thing that would make
+  Bluetooth feel broken in daily use.
+- **The fallback used to hide itself.** The emulator fallback announced itself
+  with an error that `OnDeviceConnected` overwrote one line later, so the window
+  read `Connected` with no pad attached at all — which is exactly why this
+  question needed a console harness to settle. The status line now names the
+  emulator (`BridgeService.UsingEmulator`).
 
-Run it twice: pad on USB, then pad on Bluetooth. It must answer, in order:
-
-1. Is vendor `0x303A` there at all over Bluetooth? (If not, what is the BLE
-   pad's VID? The macOS match assumes the USB vendor id survives.)
-2. Is there an interface with usage page `0xFF00` / usage `1`?
-3. If so — what are its in/out report byte lengths, and does it open for read
-   *and* write, including the **second** write handle the deadlock workaround
-   needs (`WinrtTransport.cs:56-75`)?
-4. If not — which collections *does* the BLE device expose? This decides 4.3.
-5. Confirm the framing is unchanged by calling `sys.version` and
-   `v.oai.thstatus` over that interface and getting a reply.
-6. Does the handle survive the pad sleeping, and does the interface come back —
-   the same path? — when a keypress wakes it?
-
-### 4.2 If the vendor collection is exposed (the expected outcome)
-
-Little or no protocol code; the work is diagnostics and reconnection:
-
-- **Say the Bluetooth thing.** macOS says *"No Work Louder device on the HID bus.
-  If it is a Bluetooth pad it may have gone to sleep — press a key to wake it."*
-  (`WLDevice.swift:55`). The port has no equivalent: `BridgeService` falls back
-  to the emulator with "Creator Micro 2 not found; using the pad emulator"
-  (`BridgeService.cs:204-208`), which is actively misleading for a sleeping BLE
-  pad. A sleeping pad must never silently become the emulator.
-- **Reconnect.** A Bluetooth drop removes the interface and the path can change,
-  so the read loop's "retry the read" is not enough: re-enumerate and reopen, and
-  surface the state in the window rather than only in the tray tooltip.
-- **Budget for latency.** Over Bluetooth each report is its own transfer, so a
-  multi-report payload (a whole `v.oai.thstatus`, or `lights.preview`) is several
-  round trips. The 2.5 s poll is comfortable; rapid lighting changes will lag, so
-  the lights console has to stay usable rather than instant.
-
-### 4.3 If only a keyboard collection is exposed
-
-Then the vendor channel is unreachable through the HID API. Options, in order:
-
-1. **Document it and stop.** Bluetooth works on macOS; on Windows the pad needs
-   the cable. Cheap, honest, and no worse than today — a row in
-   `docs/using-the-pad.md#not-here-yet`.
-2. **Speak BLE GATT directly** via
-   `Windows.Devices.Bluetooth.GenericAttributeProfile`. This assumes the firmware
-   carries the vendor protocol on a GATT characteristic rather than a HID output
-   report — unknown, and it would mean discovering service and characteristic
-   UUIDs and re-framing the protocol. Real reversing work, no guarantee.
-3. **Multiplex the merged collection**: one interface carrying keyboard *and*
-   vendor reports, demultiplexed by report id. Only worth trying if 4.1 shows
-   both on a single interface.
-
-### 4.4 Acceptance
-
-- Over Bluetooth the pad behaves as it does over USB: agents light, agent keys
-  focus, the keymap binds, the lights console works.
-- Losing and regaining the link recovers without restarting the app.
-- A sleeping pad produces a message that names Bluetooth and the wake keypress,
-  and never silently becomes the emulator.
-- USB is unchanged — `WinrtTransport` is shared, so the USB path is the
-  regression test for every change here.
-
-### 4.5 Non-goals
-
-- No change to the wire protocol, the JSON-RPC surface or `Pad`.
-- No Bluetooth pairing UI: pairing stays in Windows Settings, as it does for any
-  BLE HID device.
+Neither is a Bluetooth change; both belong to the port's polish pass.
 
 ## PR strategy
 
