@@ -10,6 +10,7 @@ Status: **Phase 2 in progress** — the MAUI app builds and launches via F5 (VS 
 - [x] Phase 2 (device) — `WinrtTransport` wired into `BridgeService`; verified against real hardware (`device.status`, `sys.version`, `v.oai.thstatus` all answered). Also fixed a HID **write deadlock**: the blocking read loop and the writes shared one synchronous handle, so `WriteFile` could block forever — the transport now writes on a dedicated handle.
 - [x] Phase 2 (keymap) — `KeymapManager.ApplyAsync` now completes against the real pad (reports "already applied" on the pad, and applies cleanly on the emulator). Two bugs fixed: the emulator returned `fs.read`'s `data` as a nested object where the firmware — and the Swift emulator — return a JSON **string**, so every emulated read failed to parse; and the joystick check demanded all four cardinal sectors, but firmware 0.6.3's radial stick exposes only two (0.25/0.75), so the check could never pass. The check now verifies the cardinals the device actually exposes (an exposed cardinal with a wrong code still fails).
 - [x] Phase 2 (tray) — real tray icon via `H.NotifyIcon.Maui`: generated icon, live tooltip, context menu (Show/Hide Window, Toggle Bridge, Exit), left-click toggles the window. (Window *close* → tray is not wired yet.)
+- [x] Tooling — SemVer from one source (`Directory.Build.props`, surfaced by the app and the console harness), `CHANGELOG.md`, a `README.md` with badges, and a repo-root `AGENTS.md`
 - [ ] Phase 2 (features) — agent-key colours, dial/joystick, on/off switch, macro keys, login item
 - [ ] Upstream issue — propose the `windows/` subdirectory before Phase 2 grows
 - [ ] Phase 3 (parity) — stack float window, land panel, emulator window, wide-key default
@@ -31,7 +32,7 @@ Goal: an MVP tray app for Windows 11 that does what the macOS menu-bar app does 
 | `Sources/WLKit/WLDevice.swift` | Core (framing) + Windows transport impl | separate transport interface; pure codec (chunking, brace reassembly, pending RPC ids <1000) goes in Core |
 | `Sources/WLKit/HerdrClient.swift` | Core | `UnixDomainSocketEndPoint` (macOS/Linux) / `NamedPipeClientStream` (Windows), one-request-per-connection |
 | `Sources/WLKit/StatusMapper.swift` | Core | pure logic |
-| `Sources/WLKit/KeyBindings.swift` | Core | config path → `%APPDATA%\MicroManager\config.json` |
+| `Sources/WLKit/KeyBindings.swift` | Core | ported as-is: `XDG_CONFIG_HOME` else `%USERPROFILE%\.config\micromanager\config.json` (not `%APPDATA%` — the Swift convention won) |
 | `Sources/WLKit/KeymapManager.swift` | Core | reads/writes keymap over RPC; no OS keymap |
 | `Sources/WLKit/PadEmulator.swift` | Core | in-process, zero OS dependency — port first, develop without hardware |
 | `Sources/WLKit/AnsiHTML.swift` | Core | pure |
