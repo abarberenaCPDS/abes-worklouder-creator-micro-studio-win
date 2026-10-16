@@ -93,8 +93,16 @@
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
                         <Frame Padding="10" Margin="5" BorderColor="{StaticResource SecondaryColor}">
+                            <Frame.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding FocusCommand}" />
+                            </Frame.GestureRecognizers>
                             <Grid ColumnDefinitions="*,Auto">
-                                <Label Text="{Binding AgentName}" FontAttributes="Bold" Grid.Column="0" />
+                                <VerticalStackLayout Grid.Column="0" Spacing="0">
+                                    <Label Text="{Binding ShortName}" FontAttributes="Bold" />
+                                    <Label Text="{Binding DirectoryName}"
+                                           FontSize="10"
+                                           TextColor="{StaticResource SecondaryColor}" />
+                                </VerticalStackLayout>
                                 <Label Text="{Binding Status}" TextColor="{Binding StatusColor}" Grid.Column="1" />
                             </Grid>
                         </Frame>

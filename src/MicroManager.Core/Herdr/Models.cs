@@ -14,7 +14,9 @@ public sealed record HerdrAgent(
     string AgentStatus,
     string? Cwd,
     string? ForegroundCwd,
-    bool Focused)
+    bool Focused,
+    string? TerminalTitle = null,
+    string? TerminalTitleStripped = null)
 {
     /// The target to hand to `agent.focus`, which resolves pane ids only.
     public string? FocusTarget => PaneId ?? TerminalId;
@@ -24,8 +26,26 @@ public sealed record HerdrAgent(
     public string WorkingDirectory =>
         !string.IsNullOrEmpty(ForegroundCwd) ? ForegroundCwd : Cwd ?? string.Empty;
 
-    public string ShortName =>
+    /// The last path component of the working directory. Every agent in one
+    /// checkout shares it, so it does not tell them apart - see `ShortName`.
+    public string DirectoryName =>
         string.IsNullOrEmpty(WorkingDirectory) ? Agent : Path.GetFileName(WorkingDirectory);
+
+    /// What to call the agent on a status line.
+    ///
+    /// Herdr reports the pane's own title, and that is the only thing that
+    /// distinguishes agents sharing a checkout - three panes in one repo all
+    /// answer to the directory name. Claude sets it to the task ("bug-prefill"),
+    /// Codex to "repo | branch". It is also what Herdr's own panel shows for the
+    /// pane, so a slot here reads like the row it mirrors.
+    ///
+    /// The macOS app stops at the directory and so lists "arcOS.Web" three
+    /// times; preferring the title is a deliberate divergence. Older Herdr
+    /// builds omit the title, hence the fallback.
+    public string ShortName =>
+        !string.IsNullOrWhiteSpace(TerminalTitleStripped)
+            ? TerminalTitleStripped.Trim()
+            : DirectoryName;
 }
 
 public sealed record HerdrTab(

@@ -8,6 +8,17 @@ console harness, so there is nothing else to keep in step.
 
 ## [Unreleased]
 
+### Changed
+
+- Agents are named by their Herdr **pane title** (`terminal_title_stripped`)
+  rather than only by the working directory, so several agents working in one
+  checkout are no longer all called `arcOS.Web`. A Herdr too old to report a
+  title still falls back to the directory name. The macOS app uses the directory
+  name alone, so this is a deliberate divergence.
+- The window's agent list now shows that name with the checkout beneath it, and
+  its rows jump to the agent when clicked. It had been showing the agent *kind*,
+  so a row per Claude agent read `claude` over and over.
+
 ## [0.1.0] - 2026-10-15
 
 ### Added

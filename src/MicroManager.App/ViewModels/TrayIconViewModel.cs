@@ -113,6 +113,7 @@ public class TrayIconViewModel : INotifyPropertyChanged
                 {
                     existing.Status = agent.AgentStatus;
                     existing.ShortName = agent.ShortName;
+                    existing.DirectoryName = agent.DirectoryName;
                     existing.Focused = agent.Focused;
                 }
                 else
@@ -123,8 +124,9 @@ public class TrayIconViewModel : INotifyPropertyChanged
                         AgentName = agent.Agent,
                         Status = agent.AgentStatus,
                         ShortName = agent.ShortName,
+                        DirectoryName = agent.DirectoryName,
                         Focused = agent.Focused,
-                        FocusAction = () => FocusAgent(agent)
+                        FocusCommand = new Command(() => FocusAgent(agent))
                     });
                 }
             }
@@ -200,7 +202,9 @@ public class AgentViewModel : INotifyPropertyChanged
 {
     public string PaneId { get; set; } = string.Empty;
     public string AgentName { get; set; } = string.Empty;
-    public Action FocusAction { get; set; } = () => { };
+
+    /// <summary>Jumps to this agent, the same thing its key on the pad does.</summary>
+    public ICommand FocusCommand { get; set; } = new Command(() => { });
 
     private string _status = string.Empty;
     public string Status
@@ -219,6 +223,17 @@ public class AgentViewModel : INotifyPropertyChanged
     {
         get => _shortName;
         set { _shortName = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>
+    /// The checkout the agent works in. Several agents in one repo share it, so
+    /// it is shown under the name rather than used as the name.
+    /// </summary>
+    private string _directoryName = string.Empty;
+    public string DirectoryName
+    {
+        get => _directoryName;
+        set { _directoryName = value; OnPropertyChanged(); }
     }
 
     private bool _focused;
