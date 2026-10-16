@@ -26,9 +26,23 @@ console harness, so there is nothing else to keep in step.
 - The dial and joystick: effort and model for the focused Claude or Codex pane.
 - The pad's lighting mirrored in the window as a row of key swatches, with the
   last action on a status line — the pad itself has no screen.
+- Reaching a Herdr server that runs **inside WSL**: an absolute
+  `HERDR_SOCKET_PATH` runs `nc -U` in the distro over `wsl.exe`'s stdio, so a
+  Linux socket becomes reachable with no relay process and no listening port.
+  `MICROMANAGER_WSL_DISTRO` selects the distro when it is not the default.
 
 ### Fixed
 
+- A transport that answered with something that was not JSON — `wsl.exe`
+  complaining, say — surfaced as a JSON deserialisation error rather than as its
+  own words.
+- Disposing a connection could throw while unwinding: the reader closed the
+  socket, then the writer's parting flush failed on the closed handle, replacing
+  the real error with an `ObjectDisposedException`.
+- Requests went out with the platform's line ending (`\r\n` on Windows) instead
+  of the protocol's newline.
+- `UnixHerdrConnection` never created its writer, so every write on macOS and
+  Linux threw `"not connected"`.
 - The emulator raised its own notification event but never pushed the input
   report a real pad sends, so key handling could only be tried against hardware.
 - A HID write deadlock: the blocking read loop and the writes shared one

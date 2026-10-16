@@ -14,6 +14,7 @@ Status: **Phase 2 in progress** — the MAUI app builds and launches via F5 (VS 
 - [x] Phase 2 (keys) — key presses are dispatched off the `v.oai.hid` notification stream: an agent key calls `agent.focus` and raises the terminal window, the tab key cycles tabs, the macro keys type the configured text into the focused pane unsubmitted, and the switch clears the lights while leaving the keymap bound. Painting is skipped unless a fingerprint of the whole picture changes.
 - [x] Phase 2 (tune) — the dial climbs the Claude effort ladder (`/effort`) or sends the Codex chords, and the joystick cycles the Claude model list (`/model`) or drives the Codex picker.
 - [x] Phase 2 (emulator) — the pad emulator now pushes `v.oai.hid` notifications as input reports in the abbreviated `m`/`p` envelope, so the key path is reachable without hardware. Concurrent RPC sends are serialised at the transport, so a key press handled on the read thread cannot interleave its frames with the poll loop's.
+- [x] Phase 2 (Herdr transport) — a Herdr server **inside WSL** is now reachable: an absolute `HERDR_SOCKET_PATH` runs `nc -U` in the distro over `wsl.exe`'s stdio, with `MICROMANAGER_WSL_DISTRO` selecting the distro, so no relay process and no port. Verified live against Herdr 0.9.5 in WSL (four agents listed); `HerdrWslTests` covers the transport choice, the live call, and both failure modes. Three latent bugs fell out of it: the platform line ending (`\r\n`) went out instead of the protocol's newline, disposing a connection could throw over the real error (the reader closed the handle, then the writer's flush failed on it), and a transport that complained in non-JSON surfaced as a deserialisation error rather than its own words. The **named-pipe** branch is still unexercised against a real Windows Herdr and the pipe name it creates is unknown, so the app's default Unix-shaped path will not resolve to one.
 - [ ] Phase 2 (login item) — start with Windows via `HKCU\...\Run`
 - [ ] Upstream issue — propose the `windows/` subdirectory before Phase 2 grows
 - [ ] Phase 3 (parity) — stack float window, land panel, emulator window, wide-key default
@@ -24,7 +25,7 @@ Goal: an MVP tray app for Windows 11 that does what the macOS menu-bar app does 
 ## Why this is feasible
 
 - The protocol logic (JSON-RPC framing over 64-byte HID reports, keymap binding, status colours, tab cycle, land plan, pad emulator) is platform-independent Swift → C# port.
-- Herdr runs natively on Windows (GA) and exposes the same newline-delimited JSON API over a **named pipe** instead of a Unix socket ([herdr.dev/docs/socket-api](https://herdr.dev/docs/socket-api)). `NamedPipeClientStream` covers it.
+- Herdr runs natively on Windows (GA) and exposes the same newline-delimited JSON API over a **named pipe** instead of a Unix socket ([herdr.dev/docs/socket-api](https://herdr.dev/docs/socket-api)). `NamedPipeClientStream` covers it. A Herdr server inside **WSL** is the case that actually comes up on a dev box, and it serves a *Linux* socket — reached through `nc -U` over `wsl.exe` (see the checklist).
 - Windows has no Input Monitoring permission gate for HID vendor collections — the app's biggest macOS papercut (signing/ad-hoc hash churn) disappears.
 
 ## What ports cleanly (put in `src/MicroManager.Core`, target net10.0)
@@ -55,6 +56,7 @@ Tests to port (they are the spec): `PadEmulatorTests`, `StatusMapperTests`, `Key
 
 Windows-specific gotchas:
 - **Focus stealing**: `agent.focus` selects the pane but does not bring the terminal forward, so the port raises the window itself (`SetForegroundWindow`, attached to the foreground thread's input queue — a background process cannot just take focus). The terminal is found by executable name; override with `WL_TERMINAL_PROCESS`.
+- **Herdr in WSL**: a Linux socket inside a WSL2 VM cannot be opened from Windows at all, and `HERDR_SOCKET_PATH` only overrides the path string, not the transport. The port therefore reads the *shape* of that path: absolute Unix path → run `nc -U` in the distro over `wsl.exe`'s stdio; anything else → a named pipe. Costs one process spawn per request, which is fine because Herdr serves one request per connection and closes it. Needs `nc -U` in the distro (`nmap-ncat`).
 - **Joystick travel**: firmware 0.6.3 exposes only two stick sectors (bound to AG15/AG17, i.e. north/south), so the Codex picker can be opened and moved but its east/west confirm and cancel are unreachable on this firmware. Claude's model list only needs the vertical deflections, so it is unaffected.
 - **Wide key**: Superwhisper doesn't exist on Windows; right-Win tap opens Start menu. Default to Win+H (voice typing) or make it configurable.
 - **Stack window**: needs `WS_EX_NOACTIVATE` Win32 interop so it never steals focus from the terminal.

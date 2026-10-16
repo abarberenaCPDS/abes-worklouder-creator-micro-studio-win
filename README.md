@@ -25,7 +25,8 @@ raw-HID JSON-RPC channel on the other — with no Node and no daemon.
 
 - Windows 11 (build `10.0.19041` or newer)
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- A Creator Micro 2 and a running Herdr server for anything beyond the emulator
+- A Creator Micro 2 and a running Herdr server for anything beyond the emulator —
+  on Windows that usually means [Herdr inside WSL](#connecting-to-herdr)
 - Visual Studio 2026 to launch the MAUI app — **F5** is the supported path
 
 ## Build, test, run
@@ -51,6 +52,27 @@ dotnet run --project src\MicroManager.Console
 The emulator stands in for the firmware and reproduces its awkward habits on
 purpose, so a bug it shows you is one you would have met on hardware — see the
 [top-level README](../README.md#no-pad-to-hand).
+
+## Connecting to Herdr
+
+Herdr serves its API on a named pipe on Windows, but a Herdr server running
+**inside WSL** listens on a Linux socket that no Windows process can open. The
+app bridges that by running `nc -U` in the distro and speaking the protocol over
+`wsl.exe`'s stdio — no relay process, no listening port, nothing left running on
+the Linux side.
+
+The shape of `HERDR_SOCKET_PATH` picks the transport: an absolute Unix path means
+WSL, anything else means a Windows pipe.
+
+```powershell
+$env:HERDR_SOCKET_PATH = '/home/you/.config/herdr/herdr.sock'
+$env:MICROMANAGER_WSL_DISTRO = 'AlmaLinux-9'   # only if not your default distro
+```
+
+That needs `nc` with `-U` in the distro (`nmap-ncat`) and an absolute path — `~`
+is not expanded, because no shell is involved. The named-pipe case for Herdr
+running natively on Windows, and the failure modes of both, are in
+**[docs/using-the-pad.md](docs/using-the-pad.md#reaching-herdr)**.
 
 ## Using the pad
 
@@ -83,7 +105,7 @@ dotnet build MicroManager.sln -p:Version=0.2.0-rc.1
 
 | | |
 |---|---|
-| `src/MicroManager.Core` | protocol, Herdr client, keymap, status mapping, pad emulator |
+| `src/MicroManager.Core` | protocol, Herdr client (named pipe, Unix socket, WSL bridge), keymap, status mapping, pad emulator |
 | `src/MicroManager.Transport.Winrt` | raw-HID transport (vendor usage page `0xFF00`) |
 | `src/MicroManager.App` | the MAUI tray app |
 | `src/MicroManager.Console` | hardware smoke test |

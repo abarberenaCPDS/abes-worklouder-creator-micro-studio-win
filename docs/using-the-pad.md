@@ -12,7 +12,8 @@ see [`../PLAN.md`](../PLAN.md).
   written and tested against.
 - A running **Herdr** server with at least one agent pane. The pad shows
   `agent.list` and nothing else: with Herdr unreachable the app still drives the
-  pad, but every key goes dark and the status line reports the error.
+  pad, but every key goes dark and the status line reports the error. On Windows
+  that usually means Herdr inside WSL — see [Reaching Herdr](#reaching-herdr).
 - **Quit Work Louder's `Input` app and the Codex desktop app** while you use
   this. All three drive the same lighting and will overwrite each other. Windows
   needs no permission grant (unlike macOS Input Monitoring), but the port does
@@ -226,10 +227,65 @@ rather than owning it, so there is nothing to read it from.
 |---|---|
 | `MICROMANAGER_EMULATOR` | `1` runs against the in-process pad emulator, ignoring hardware |
 | `WL_TERMINAL_PROCESS` | the terminal **executable name** to raise on an agent press |
-| `HERDR_SOCKET_PATH` | the Herdr socket, overriding the default |
+| `HERDR_SOCKET_PATH` | the Herdr socket: a Windows pipe name, or an absolute path inside WSL (see [Reaching Herdr](#reaching-herdr)) |
+| `MICROMANAGER_WSL_DISTRO` | the distro that holds Herdr, when it is not WSL's default |
 | `XDG_CONFIG_HOME` | moves the config directory |
 
 `WL_TERMINAL_PROCESS` matters more than it looks: see below.
+
+## Reaching Herdr
+
+On Windows the app has two transports and chooses between them from the *shape*
+of `HERDR_SOCKET_PATH`. There is no separate switch, because the shape is the
+answer: a path starting with `/` cannot be a Windows pipe, so it can only mean a
+socket inside a distro.
+
+| `HERDR_SOCKET_PATH` | how the app connects |
+|---|---|
+| `/home/you/.config/herdr/herdr.sock` | Herdr **inside WSL**, reached over `wsl.exe` |
+| `\\.\pipe\…`, or a bare pipe name | a Windows **named pipe**, for Herdr running natively on Windows |
+
+### Herdr inside WSL
+
+Nothing has to be left running on the Linux side: no relay process, no listening
+port, no daemon. Each request runs `nc -U <socket>` in the distro and speaks the
+protocol over that child's pipes — and Herdr closes the socket after every reply,
+so there was never a connection to keep for a second call anyway.
+
+```powershell
+$env:HERDR_SOCKET_PATH = '/home/you/.config/herdr/herdr.sock'
+$env:MICROMANAGER_WSL_DISTRO = 'AlmaLinux-9'   # only when it is not the default distro
+```
+
+Two things it needs:
+
+- **`nc` with `-U`** in the distro. `nmap-ncat` provides it
+  (`sudo dnf install nmap-ncat`); it is what `nc` already is on most distros.
+- **An absolute path.** `~` is expanded by a shell, and no shell is involved, so
+  `/home/you/.config/herdr/herdr.sock` works and `~/.config/herdr/herdr.sock`
+  does not.
+
+To check it before launching the app at all:
+
+```powershell
+dotnet test tests\MicroManager.Core.Tests\MicroManager.Core.Tests.csproj --filter FullyQualifiedName~HerdrWslTests
+```
+
+Those two live tests skip themselves unless `HERDR_SOCKET_PATH` names a socket
+inside WSL, so they are safe to run anywhere.
+
+### Herdr on Windows
+
+Herdr's native Windows build serves the same API on a **named pipe** instead of a
+Unix socket, so give the app the pipe name and it takes the other branch. This
+path is **less proven than the WSL one**: it has not been exercised against a
+real Windows Herdr here, and the pipe name the app assumes by default is a
+Unix-shaped path that will not resolve to a pipe. List what Herdr actually
+created and point the app at it:
+
+```powershell
+Get-ChildItem \\.\pipe\ | Where-Object Name -match herdr
+```
 
 ## Pressing keys
 
@@ -326,6 +382,9 @@ is the one sending a keystroke instead.
 | a key does something unexpected | another client (Work Louder's `Input` app, Codex desktop) is fighting for the pad and rewriting the lighting. Quit it |
 | "Focused the agent, but found no terminal window to raise." | set `WL_TERMINAL_PROCESS` to your terminal's executable name |
 | status shows `Error: …` | the last poll failed, usually Herdr unreachable. Check `HERDR_SOCKET_PATH` |
+| `Error: There is no distribution with the supplied name.` | `MICROMANAGER_WSL_DISTRO` does not match a distro you have — check `wsl --list` |
+| an `nc` complaint about `No such file or directory` | the socket is not where `HERDR_SOCKET_PATH` says: Herdr is not running, or it is in a different distro |
+| `~/…` in `HERDR_SOCKET_PATH` fails | nothing expands it: the WSL route runs no shell, so use the absolute `/home/you/…` |
 | the pad is dark and the window says `disabled` | the bridge is switched off. Toggle it back; the lights return immediately and the keymap is untouched |
 | one key stays dark but its agent is running | the 6 agent slots cover 6 agents; further agents have no key |
 | everything is dark after switching profiles on the pad | see the keymap note above — the app binds the *active* profile's first layer |
