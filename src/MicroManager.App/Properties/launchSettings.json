@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "MicroManager.App": {
+      "commandName": "MsixPackage",
+      "launchBrowser": false,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

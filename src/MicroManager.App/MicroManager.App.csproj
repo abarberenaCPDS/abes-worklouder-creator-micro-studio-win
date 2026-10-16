@@ -42,6 +42,7 @@
     <Compile Include="Platforms\Windows\Win32.cs" />
     <Compile Include="Services\BridgeService.cs" />
     <Compile Include="ViewModels\TrayIconViewModel.cs" />
+    <None Include="Properties\launchSettings.json" />
   </ItemGroup>
 
 </Project>
