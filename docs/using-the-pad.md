@@ -34,6 +34,7 @@ toggle the window, right-click for the menu.
 | **Pad keys** | 13 swatches mirroring the pad, each showing that key's live colour |
 | last action | what the pad was last used for — the pad has no screen of its own |
 | agent list | one row per Herdr agent, in Herdr's own order, each in its key's colour — click a row to jump to that agent |
+| **Lights** | driving the pad by hand — the macOS Inspector's colour controls, see [Changing the colours](#changing-the-colours) |
 
 Agents are named by the **pane's own title**, the same text Herdr's panel shows
 for that pane: Claude's current task (`bug-prefill`), Codex's `repo | branch`.
@@ -170,9 +171,27 @@ because the bindings are still there.
 
 ### Changing the colours
 
-There is **no config file for colours** — not in this port and not in the macOS
-original. The palette is compiled in, in
-`windows/src/MicroManager.Core/Config/StatusMapper.cs`:
+These are two different things: what colour a *state* gets, and what colour a
+*key* gets.
+
+The **Lights** console at the bottom of the window drives the pad by hand. It is
+the macOS **Inspector**'s colour controls, which is the only place in either
+implementation where you choose a colour yourself: select keys (or all of them),
+set colour, effect, brightness and speed, then apply to the selection, to the
+whole key-backlight zone, or to the underglow. **All lights off** clears
+everything.
+
+Applying turns on **Take the lights off the bridge** by itself, because the
+bridge repaints every 2.5 s and a colour applied underneath it would be gone
+before you saw it. While that switch is on the bridge still tracks Herdr and
+every key still works — it simply stops painting. Nothing here is saved: hand the
+lights back and the automatic palette returns within a tick. (On macOS the
+Inspector is a separate process, so it competes with the bridge instead, and its
+colours never last.)
+
+The **automatic** palette is a different matter: it is compiled in, in
+`windows/src/MicroManager.Core/Config/StatusMapper.cs`, and there is **no config
+file** for it — not in this port and not in the macOS original.
 
 - `BridgeConfig.Colors` — state to packed `0xRRGGBB`
 - `BridgeConfig.Effects` — state to `Oai.Effect`
@@ -411,7 +430,9 @@ These exist on macOS and are **not** in this port; the plan is in
 - the **stack** key and the **land** key — both fall flat, and the keys do nothing
 - the **voice** key — Superwhisper is macOS-only, so the wide key only works when
   you bind text to it
-- the **Inspector** debug UI, and the emulator's own window
+- the **Inspector** debug UI, and the emulator's own window — the lights console
+  covers the Inspector's colour and effect controls, but not its traffic log, raw
+  JSON-RPC console, key walk or "resend whole pad"
 - **Herdr event streams** — the port polls, so transitions are not instant
 - a **second-client warning**, and **open at login**
 - **manageKeymap: false** — the port always applies the keymap
