@@ -25,6 +25,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.10" />
     <PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="10.0.10" />
+    <PackageReference Include="H.NotifyIcon.Maui" Version="2.2.0" />
   </ItemGroup>
 
   <ItemGroup>

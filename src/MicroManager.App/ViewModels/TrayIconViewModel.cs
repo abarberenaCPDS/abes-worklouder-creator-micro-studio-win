@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Input;
+using H.NotifyIcon;
 using Microsoft.Maui.ApplicationModel;
 using MicroManager.Core.Herdr;
 using MicroManager.App.Services;
@@ -20,7 +22,15 @@ public class TrayIconViewModel : INotifyPropertyChanged
         _bridge.OnDeviceConnected += OnDeviceConnected;
         _bridge.OnDeviceDisconnected += OnDeviceDisconnected;
         _bridge.OnError += OnError;
+
+        ToggleEnabledCommand = new Command(ToggleEnabled);
+        ShowHideWindowCommand = new Command(ToggleWindowVisibility);
+        ExitApplicationCommand = new Command(ExitApplication);
     }
+
+    public ICommand ToggleEnabledCommand { get; }
+    public ICommand ShowHideWindowCommand { get; }
+    public ICommand ExitApplicationCommand { get; }
 
     private bool _isConnected;
     public bool IsConnected
@@ -110,6 +120,32 @@ public class TrayIconViewModel : INotifyPropertyChanged
     public void ToggleEnabled()
     {
         IsEnabled = !IsEnabled;
+    }
+
+    private bool _windowVisible = true;
+
+    /// <summary>Hide the window to the tray, or bring it back (tray click / menu).</summary>
+    public void ToggleWindowVisibility()
+    {
+        var window = Application.Current?.Windows.FirstOrDefault();
+        if (window is null) return;
+
+        if (_windowVisible)
+        {
+            window.Hide();
+        }
+        else
+        {
+            window.Show();
+            window.Activate();
+        }
+
+        _windowVisible = !_windowVisible;
+    }
+
+    public void ExitApplication()
+    {
+        Application.Current?.Quit();
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)

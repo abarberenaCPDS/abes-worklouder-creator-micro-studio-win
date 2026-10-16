@@ -50,17 +50,6 @@ async Task CallAsync(string method, object? parameters)
     }
 }
 
-Console.WriteLine("\n--- Keymap binding ---");
-try
-{
-    var changed = await KeymapManager.ApplyAsync(rpcDevice);
-    Console.WriteLine($"  Keymap applied: {changed}");
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"  Keymap apply failed: {ex.Message}");
-}
-
 Console.WriteLine("\n--- device.status ---");
 await CallAsync("device.status", null);
 
@@ -74,6 +63,17 @@ var threads = new List<Oai.Thread>
     new Oai.Thread(2) { Color = 0xFFA000, Brightness = 0.5, Effect = Oai.Effect.Solid },
 };
 await CallAsync("v.oai.thstatus", Oai.ThreadsParams(threads));
+
+Console.WriteLine("\n--- Keymap binding ---");
+try
+{
+    var changed = await KeymapManager.ApplyAsync(rpcDevice);
+    Console.WriteLine($"  Keymap applied: {changed}");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"  Keymap apply failed: {ex.Message}");
+}
 
 await rpcDevice.DisposeAsync();
 Console.WriteLine("\nDone!");

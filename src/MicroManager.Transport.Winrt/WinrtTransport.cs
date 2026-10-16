@@ -16,6 +16,7 @@ namespace MicroManager.Transport.Winrt;
 public sealed class WinrtTransport : IWlTransport, IDisposable
 {
     private IntPtr _handle = IntPtr.Zero;
+    private IntPtr _writeHandle = IntPtr.Zero;
     private readonly TaskCompletionSource<bool> _connectTcs = new();
 
     public string? Product => null; // P/Invoke transport does not expose product name
@@ -52,6 +53,27 @@ public sealed class WinrtTransport : IWlTransport, IDisposable
             throw new DeviceNotConnectedException();
         }
 
+        // A dedicated handle for writes. The read loop keeps a blocking ReadFile
+        // outstanding on _handle; issuing WriteFile on that same synchronous
+        // handle can block until the pending read completes (which only happens
+        // once the device answers) — a deadlock. Separate handles avoid it.
+        _writeHandle = Native.CreateFile(
+            path,
+            Native.GENERIC_READ | Native.GENERIC_WRITE,
+            Native.FILE_SHARE_READ | Native.FILE_SHARE_WRITE,
+            IntPtr.Zero,
+            Native.OPEN_EXISTING,
+            0,
+            IntPtr.Zero);
+
+        if (_writeHandle == IntPtr.Zero || _writeHandle.ToInt64() == -1)
+        {
+            Native.CloseHandle(_handle);
+            _handle = IntPtr.Zero;
+            _writeHandle = IntPtr.Zero;
+            throw new DeviceNotConnectedException();
+        }
+
         _ = Task.Run(() => ReadLoop(cancellationToken), cancellationToken);
         return Task.CompletedTask;
     }
@@ -63,16 +85,21 @@ public sealed class WinrtTransport : IWlTransport, IDisposable
             Native.CloseHandle(_handle);
             _handle = IntPtr.Zero;
         }
+        if (_writeHandle != IntPtr.Zero)
+        {
+            Native.CloseHandle(_writeHandle);
+            _writeHandle = IntPtr.Zero;
+        }
         OnDisconnect?.Invoke(this, string.Empty);
     }
 
     public Task SendReportAsync(byte[] report, CancellationToken cancellationToken = default)
     {
-        if (_handle == IntPtr.Zero)
+        if (_writeHandle == IntPtr.Zero)
             throw new DeviceNotConnectedException();
 
         var written = 0;
-        var ok = Native.WriteFile(_handle, report, report.Length, out written, IntPtr.Zero);
+        var ok = Native.WriteFile(_writeHandle, report, report.Length, out written, IntPtr.Zero);
         if (!ok)
             throw new IOException($"WriteFile failed: {Marshal.GetLastWin32Error()}");
 

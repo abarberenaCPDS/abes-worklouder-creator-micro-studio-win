@@ -1,4 +1,5 @@
 using Microsoft.Maui.Controls.Hosting;
+using H.NotifyIcon;
 using MicroManager.App.Services;
 using MicroManager.App.ViewModels;
 using MicroManager.App.Views;
@@ -17,6 +18,7 @@ public static class MauiProgram
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                 fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
             })
+            .UseNotifyIcon()
             ;
 
         builder.Services.AddSingleton<IBridgeService, BridgeService>();
