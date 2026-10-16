@@ -22,6 +22,29 @@ public static class HerdrClient
         return Path.Combine(baseDir, "herdr", "herdr.sock");
     }
 
+    /// The distro the WSL bridge runs `nc` in. Unset uses WSL's own default.
+    public static string? WslDistro()
+    {
+        var distro = Environment.GetEnvironmentVariable("MICROMANAGER_WSL_DISTRO");
+        return string.IsNullOrEmpty(distro) ? null : distro;
+    }
+
+    /// An absolute Unix path in `HERDR_SOCKET_PATH` on Windows can only mean a
+    /// path *inside* a distro — no Windows Herdr is ever reached that way — so
+    /// it selects the WSL bridge instead of a named pipe.
+    public static bool IsWslSocketPath(string path) => path.StartsWith('/');
+
+    /// Windows reaches Herdr through a named pipe, or through `wsl.exe` when
+    /// pointed at a socket inside WSL. Everywhere else it is a Unix socket.
+    public static IHerdrConnection CreateConnection(string path)
+    {
+        if (!OperatingSystem.IsWindows()) return new UnixHerdrConnection(path);
+
+        return IsWslSocketPath(path)
+            ? new StdioHerdrConnection(path, WslDistro())
+            : new NamedPipeHerdrConnection(path);
+    }
+
     private static readonly JsonSerializerOptions Snake = HerdrJson.Snake;
 
     /// Agents in the server's own order — workspace, then tab, then pane —
@@ -100,13 +123,20 @@ public static class HerdrClient
     private static int _nextId;
     private static string NextId() => $"wl_{System.Threading.Interlocked.Increment(ref _nextId)}";
 
+    /// What came back was not JSON. A transport tool complaining looks exactly
+    /// like this: `wsl.exe` writes its errors to stdout, and writes them as
+    /// UTF-16, so every character arrives with a NUL after it.
+    private static string TransportGrumble(string line)
+    {
+        var cleaned = new string(line.Where(c => !char.IsControl(c)).ToArray()).Trim();
+        return cleaned.Length > 0 ? cleaned : "the connection produced no JSON";
+    }
+
     private static async Task<TResult> RequestAsync<TResult>(string method, object? parameters,
         CancellationToken ct, TimeSpan? timeout = null)
     {
         var path = SocketPath();
-        IHerdrConnection connection = OperatingSystem.IsWindows()
-            ? (IHerdrConnection)new NamedPipeHerdrConnection(path)
-            : new UnixHerdrConnection(path);
+        var connection = CreateConnection(path);
 
         await using var _ = connection.ConfigureAwait(false);
         var cts = timeout is { } t
@@ -127,7 +157,16 @@ public static class HerdrClient
 
             await foreach (var line in connection.ReadLinesAsync(cts.Token).ConfigureAwait(false))
             {
-                var document = JsonSerializer.Deserialize<JsonElement>(line, Snake);
+                JsonElement document;
+                try
+                {
+                    document = JsonSerializer.Deserialize<JsonElement>(line, Snake);
+                }
+                catch (JsonException)
+                {
+                    throw new HerdrException(HerdrError.BadResponse, TransportGrumble(line), path);
+                }
+
                 if (document.ValueKind != JsonValueKind.Object) continue;
                 if (document.TryGetProperty("error", out var error) &&
                     error.ValueKind == JsonValueKind.Object &&
@@ -163,9 +202,7 @@ public static class HerdrClient
         public EventStream(List<Dictionary<string, object?>> subscriptions)
         {
             _subscriptions = subscriptions;
-            _connection = OperatingSystem.IsWindows()
-                ? (IHerdrConnection)new NamedPipeHerdrConnection(SocketPath())
-                : new UnixHerdrConnection(SocketPath());
+            _connection = CreateConnection(SocketPath());
         }
 
         public async Task<EventStream> StartAsync(CancellationToken ct = default)
