@@ -20,6 +20,7 @@ public sealed class UnixHerdrConnection : IHerdrConnection
         await _socket.ConnectAsync(endPoint, cancellationToken).ConfigureAwait(false);
         _stream = new NetworkStream(_socket, ownsSocket: true);
         _reader = new StreamReader(_stream);
+        _writer = new StreamWriter(_stream) { AutoFlush = true, NewLine = "\n" };
     }
 
     public Task WriteLineAsync(string json, CancellationToken cancellationToken = default)
@@ -42,9 +43,12 @@ public sealed class UnixHerdrConnection : IHerdrConnection
 
     public ValueTask DisposeAsync()
     {
-        _reader?.Dispose();
-        _stream?.Dispose();
-        _socket?.Dispose();
+        // Disposing the reader closes the socket underneath, so the writer's
+        // parting flush throws; that must not replace the error being unwound.
+        try { _writer?.Dispose(); } catch (Exception) { }
+        try { _reader?.Dispose(); } catch (Exception) { }
+        try { _stream?.Dispose(); } catch (Exception) { }
+        try { _socket?.Dispose(); } catch (Exception) { }
         return ValueTask.CompletedTask;
     }
 }

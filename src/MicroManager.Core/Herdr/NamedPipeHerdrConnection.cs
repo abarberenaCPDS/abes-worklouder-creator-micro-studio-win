@@ -35,7 +35,8 @@ public sealed class NamedPipeHerdrConnection : IHerdrConnection
         return _pipe.ConnectAsync(cancellationToken).ContinueWith(_ =>
         {
             _reader = new StreamReader(_pipe!);
-            _writer = new StreamWriter(_pipe!) { AutoFlush = true };
+            // Herdr's framing is newline-delimited; the Windows default is CRLF.
+            _writer = new StreamWriter(_pipe!) { AutoFlush = true, NewLine = "\n" };
         }, cancellationToken);
     }
 
@@ -57,9 +58,13 @@ public sealed class NamedPipeHerdrConnection : IHerdrConnection
 
     public ValueTask DisposeAsync()
     {
-        _reader?.Dispose();
-        _writer?.Dispose();
-        _pipe?.Dispose();
+        // The order matters, and so does the swallowing. Both text wrappers were
+        // built over the pipe without leaveOpen, so disposing the reader closes
+        // it; flushing the writer after that throws, and that exception would
+        // replace whatever we were unwinding — an error from the server, say.
+        try { _writer?.Dispose(); } catch (Exception) { }
+        try { _reader?.Dispose(); } catch (Exception) { }
+        try { _pipe?.Dispose(); } catch (Exception) { }
         return ValueTask.CompletedTask;
     }
 }
