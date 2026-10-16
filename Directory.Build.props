@@ -1,0 +1,21 @@
+<Project>
+
+  <!--
+    One version for the whole Windows port, in Semantic Versioning 2.0.0 form.
+    The .NET SDK derives AssemblyVersion, FileVersion and InformationalVersion
+    from this, so bumping a release means editing this one line.
+
+    Override it for a one-off build or a CI run without touching the file:
+
+        dotnet build MicroManager.sln -p:Version=0.2.0-rc.1
+
+    What each version contains is recorded in CHANGELOG.md.
+  -->
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Product>Micro Manager</Product>
+    <Company>Micro Manager</Company>
+    <Authors>Micro Manager contributors</Authors>
+  </PropertyGroup>
+
+</Project>

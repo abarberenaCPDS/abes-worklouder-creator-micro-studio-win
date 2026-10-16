@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using H.NotifyIcon;
 using Microsoft.Maui.ApplicationModel;
+using MicroManager.Core;
 using MicroManager.Core.Herdr;
 using MicroManager.App.Services;
 
@@ -52,6 +53,9 @@ public class TrayIconViewModel : INotifyPropertyChanged
         get => _statusText;
         set { _statusText = value; OnPropertyChanged(); }
     }
+
+    /// <summary>The port's SemVer version, from windows/Directory.Build.props.</summary>
+    public string VersionText { get; } = $"v{MicroManagerInfo.Version}";
 
     public ObservableCollection<AgentViewModel> Agents { get; } = new();
 

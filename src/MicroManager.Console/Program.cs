@@ -1,10 +1,11 @@
+using MicroManager.Core;
 using MicroManager.Core.Emulator;
 using MicroManager.Core.Keymap;
 using MicroManager.Core.Pad;
 using MicroManager.Core.Transport;
 using MicroManager.Transport.Winrt;
 
-Console.WriteLine("=== Micro Manager Console Test ===");
+Console.WriteLine($"=== Micro Manager Console Test (v{MicroManagerInfo.Version}) ===");
 Console.WriteLine();
 
 // Prefer the real Creator Micro 2 over raw HID; fall back to the in-process

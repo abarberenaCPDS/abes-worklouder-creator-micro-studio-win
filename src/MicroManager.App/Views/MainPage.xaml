@@ -18,6 +18,8 @@
             </tb:TaskbarIcon.IconSource>
             <FlyoutBase.ContextFlyout>
                 <MenuFlyout>
+                    <MenuFlyoutItem Text="{Binding VersionText}" IsEnabled="False" />
+                    <MenuFlyoutSeparator />
                     <MenuFlyoutItem Command="{Binding ShowHideWindowCommand}" Text="Show / Hide Window" />
                     <MenuFlyoutItem Command="{Binding ToggleEnabledCommand}" Text="Toggle Bridge" />
                     <MenuFlyoutSeparator />
@@ -35,6 +37,11 @@
 
             <Label Text="Work Louder Creator Micro 2 Bridge"
                    FontSize="16"
+                   HorizontalOptions="Center"
+                   TextColor="{StaticResource SecondaryColor}" />
+
+            <Label Text="{Binding VersionText}"
+                   FontSize="12"
                    HorizontalOptions="Center"
                    TextColor="{StaticResource SecondaryColor}" />
 
