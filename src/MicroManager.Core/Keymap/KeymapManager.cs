@@ -126,8 +126,8 @@ public static class KeymapManager
         return AsObject(layerObj["layout"], out var result) ? result : null;
     }
 
-    /// True when every managed key, the dial and the joystick's cardinal
-    /// sectors carry their AG codes on the active layer.
+    /// True when every managed key, the dial and the joystick's exposed
+    /// cardinal sectors carry their AG codes on the active layer.
     public static bool IsAgentKeymapApplied(JsonObject config)
     {
         var keymap = ActiveLayerKeymap(config);
@@ -150,16 +150,20 @@ public static class KeymapManager
         if (AsObject(layout["joystick"], out var joystick) &&
             AsArray(joystick["sectors"], out var sectors))
         {
-            foreach (var (centre, code) in JoystickCodes)
+            // Only the cardinal sectors the device actually exposes need
+            // binding. A radial stick may carry two (firmware 0.6.3 answers
+            // with just 0.25/0.75) and the host cannot invent the missing
+            // ones, so demanding all four would make the keymap impossible
+            // to satisfy. Any exposed cardinal with the wrong code still
+            // fails, so an unbound stick is still caught.
+            foreach (var sector in sectors.OfType<JsonObject>())
             {
-                var bound = sectors.OfType<JsonObject>().Any(sector =>
-                {
-                    if (!AsDouble(sector["a1"], out var a1) ||
-                        !AsDouble(sector["a2"], out var a2)) return false;
-                    return Math.Abs(SectorCentre(a1!.Value, a2!.Value) - centre) < 0.01 &&
-                           sector["k"]?.GetValue<string>() == code;
-                });
-                if (!bound) return false;
+                if (!AsDouble(sector["a1"], out var a1) ||
+                    !AsDouble(sector["a2"], out var a2)) continue;
+                var centre = SectorCentre(a1!.Value, a2!.Value);
+                var match = JoystickCodes.FirstOrDefault(c => Math.Abs(c.Centre - centre) < 0.01);
+                if (string.IsNullOrEmpty(match.Code)) continue;
+                if (sector["k"]?.GetValue<string>() != match.Code) return false;
             }
         }
 

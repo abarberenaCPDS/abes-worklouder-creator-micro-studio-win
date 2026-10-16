@@ -2,6 +2,7 @@ namespace MicroManager.Core.Tests;
 
 using MicroManager.Core.Config;
 using MicroManager.Core.Emulator;
+using MicroManager.Core.Keymap;
 using MicroManager.Core.Pad;
 using MicroManager.Core.Transport;
 using System.Text.Json;
@@ -255,6 +256,29 @@ public class PadEmulatorTests
             Assert.Empty(emulator.Bound);
             Assert.Empty(emulator.Keys);
             Assert.Equal(Oai.Zone.Dark.Effect, emulator.KeysZone.Effect);
+        }
+        finally
+        {
+            emulator.Disconnect();
+        }
+    }
+
+    [Fact]
+    public async Task KeymapIsReadDoubleEncodedLikeTheDevice()
+    {
+        var emulator = new PadEmulator();
+        await emulator.ConnectAsync();
+        try
+        {
+            var (raw, error) = emulator.Handle("fs.read",
+                JsonSerializer.SerializeToElement(new { file = "keymap.json" }));
+
+            Assert.Null(error);
+            // `data` is a JSON *string* the caller must parse again, exactly
+            // as the firmware double-encodes it; a nested object here would
+            // make every read fail to parse.
+            var parsed = KeymapManager.Parse(raw);
+            Assert.True(parsed.ContainsKey("profiles"));
         }
         finally
         {

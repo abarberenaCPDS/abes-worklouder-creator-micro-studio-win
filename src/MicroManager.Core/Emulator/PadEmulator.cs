@@ -153,7 +153,9 @@ public sealed class PadEmulator : IWlTransport
                 var file = fileProp.GetString()!;
                 if (file != "keymap.json") return (null, $"no such file: {file}");
                 Note("fs.read keymap.json");
-                return ($"{{\"data\":{_keymapJson}}}", null);
+                // Double-encoded, exactly as the device returns it: `data` is a
+                // JSON *string*, not a nested object.
+                return (Serialize(new Dictionary<string, object?> { ["data"] = _keymapJson }), null);
             }
 
             case "fs.write":

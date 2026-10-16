@@ -98,6 +98,38 @@ public class KeymapManagerTests
     }
 
     [Fact]
+    public void ATwoSectorStickIsAcceptedWhenItsCardinalsAreBound()
+    {
+        // Firmware 0.6.3 stores only the vertical cardinals (0.25/0.75) on the
+        // radial stick. The host cannot invent the missing sectors, so once the
+        // stick's own cardinals carry their AG codes the keymap counts as
+        // applied rather than looping on a check it can never satisfy.
+        var config = StockKeymap();
+        KeymapManager.Apply(config);
+        var layout = KeymapManager.ActiveLayerLayout(config)!;
+        // The device's stick, exactly: two sectors, the second wrapping past
+        // zero (a1 > a2), both already carrying their cardinal's AG code.
+        layout["joystick"]!.AsObject()["sectors"] = new JsonArray(
+            new JsonObject { ["k"] = "KV_OAI_AG15", ["a1"] = 0.1875, ["a2"] = 0.3125 },
+            new JsonObject { ["k"] = "KV_OAI_AG17", ["a1"] = 0.3125, ["a2"] = 0.1875 });
+
+        Assert.Equal(2, layout["joystick"]!.AsObject()["sectors"]!.AsArray().Count);
+        Assert.True(KeymapManager.IsAgentKeymapApplied(config));
+    }
+
+    [Fact]
+    public void AnExposedCardinalWithTheWrongCodeIsStillRejected()
+    {
+        var config = StockKeymap();
+        KeymapManager.Apply(config);
+        var layout = KeymapManager.ActiveLayerLayout(config)!;
+        // The 0.1875–0.3125 sector sits at 0.25; give it back a plain keycode.
+        layout["joystick"]!.AsObject()["sectors"]!.AsArray()[0]!["k"] = "KC_P4";
+
+        Assert.False(KeymapManager.IsAgentKeymapApplied(config));
+    }
+
+    [Fact]
     public void MalformedInputIsRejectedRatherThanSilentlyAccepted()
     {
         Assert.Throws<FailureException>(() =>
