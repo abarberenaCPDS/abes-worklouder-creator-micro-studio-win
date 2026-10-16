@@ -30,6 +30,14 @@ public interface IBridgeService
     event Action<string>? OnActivity;
 
     bool IsConnected { get; }
+
+    /// <summary>
+    /// True when no pad could be opened and the app is driving the in-process
+    /// emulator instead. Without this the status line reads "Connected" either
+    /// way, which hides a missing — or sleeping, over Bluetooth — pad.
+    /// </summary>
+    bool UsingEmulator { get; }
+
     bool IsEnabled { get; set; }
 
     /// <summary>
@@ -84,6 +92,13 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
     private readonly Dictionary<int, int> _manualLit = new();
 
     public bool IsConnected => _rpcDevice?.IsConnected ?? false;
+
+    /// <summary>
+    /// Set when no pad could be opened and the emulator stood in for it. The
+    /// window shows this, so a missing — or asleep, over Bluetooth — pad is
+    /// never mistaken for a working one.
+    /// </summary>
+    public bool UsingEmulator { get; private set; }
 
     /// Switching the bridge off clears the lights but deliberately leaves the
     /// keymap alone: rebinding is a flash write, and the keys light instantly on
@@ -204,7 +219,11 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
             catch (DeviceNotConnectedException)
             {
                 device.Disconnect();
-                OnError?.Invoke("Creator Micro 2 not found; using the pad emulator.");
+
+                // Not announced here: this runs before the connected event, and
+                // the status it would set is overwritten the moment the app
+                // reports itself connected. The window reads this flag instead.
+                UsingEmulator = true;
             }
         }
 

@@ -146,7 +146,9 @@ public class TrayIconViewModel : INotifyPropertyChanged
     private void OnDeviceConnected()
     {
         IsConnected = true;
-        StatusText = "Connected";
+        StatusText = _bridge.UsingEmulator
+            ? "Connected — pad emulator (Creator Micro 2 not found)"
+            : "Connected";
     }
 
     private void OnDeviceDisconnected()

@@ -8,6 +8,14 @@ console harness, so there is nothing else to keep in step.
 
 ## [Unreleased]
 
+### Fixed
+
+- The window's status line now names the **pad emulator** when no pad could be
+  opened, instead of reading "Connected" either way. The fallback warning was
+  raised before the connected event that overwrote it, which left the window
+  unable to answer "is this the real pad?" — the question that made Bluetooth
+  support hard to confirm.
+
 ## [0.2.0] - 2026-10-16
 
 ### Added
