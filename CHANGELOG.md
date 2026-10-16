@@ -33,6 +33,10 @@ console harness, so there is nothing else to keep in step.
 
 ### Fixed
 
+- Every request to a Herdr in WSL flashed a console window: the app is a GUI
+  process with no console of its own, so `wsl.exe` was allocated one, and on the
+  key path that is a flash per key press (plus one every poll). The child is now
+  created with no window.
 - A transport that answered with something that was not JSON — `wsl.exe`
   complaining, say — surfaced as a JSON deserialisation error rather than as its
   own words.

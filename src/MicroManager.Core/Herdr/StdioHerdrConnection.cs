@@ -40,16 +40,20 @@ public sealed class StdioHerdrConnection : IHerdrConnection
         _distro = distro;
     }
 
-    public Task ConnectAsync(CancellationToken cancellationToken = default)
+    /// The command that opens the socket. Split out so a test can hold the flags
+    /// still — `CreateNoWindow` above all. The app is a GUI process with no
+    /// console, so a console child left to allocate one gets a window of its own,
+    /// which is a flash of black on **every** request: every key press, and the
+    /// poll behind it.
+    public static ProcessStartInfo StartInfoFor(string socketPath, string? distro)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
         var startInfo = new ProcessStartInfo("wsl.exe")
         {
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
+            CreateNoWindow = true,
             // The child is a Linux process passing UTF-8 through a byte pipe.
             // Left to itself this would follow the Windows console code page
             // and mangle anything that is not ASCII.
@@ -58,21 +62,28 @@ public sealed class StdioHerdrConnection : IHerdrConnection
             StandardErrorEncoding = new UTF8Encoding(false),
         };
 
-        if (!string.IsNullOrEmpty(_distro))
+        if (!string.IsNullOrEmpty(distro))
         {
             startInfo.ArgumentList.Add("-d");
-            startInfo.ArgumentList.Add(_distro);
+            startInfo.ArgumentList.Add(distro);
         }
 
         // No shell, so nothing here needs quoting.
         startInfo.ArgumentList.Add("--");
         startInfo.ArgumentList.Add("nc");
         startInfo.ArgumentList.Add("-U");
-        startInfo.ArgumentList.Add(_socketPath);
+        startInfo.ArgumentList.Add(socketPath);
+
+        return startInfo;
+    }
+
+    public Task ConnectAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
 
         try
         {
-            _process = Process.Start(startInfo);
+            _process = Process.Start(StartInfoFor(_socketPath, _distro));
         }
         catch (Exception ex)
         {

@@ -40,6 +40,34 @@ public class HerdrWslTests
         Assert.NotNull(new StdioHerdrConnection("/tmp/herdr.sock", "AlmaLinux-9"));
     }
 
+    [Fact]
+    public void TheBridgeNeverOpensAConsoleWindow()
+    {
+        var startInfo = StdioHerdrConnection.StartInfoFor(
+            "/home/abe/.config/herdr/herdr.sock", "AlmaLinux-9");
+
+        // The app is a GUI process with no console, so a console child that is
+        // allowed one gets its own window — a flash of black per request, which
+        // on the key path means a flash per key press.
+        Assert.True(startInfo.CreateNoWindow);
+        Assert.False(startInfo.UseShellExecute);
+        Assert.True(startInfo.RedirectStandardInput);
+        Assert.True(startInfo.RedirectStandardOutput);
+        Assert.True(startInfo.RedirectStandardError);
+
+        Assert.Equal("wsl.exe", startInfo.FileName);
+        Assert.Equal(
+            new[] { "-d", "AlmaLinux-9", "--", "nc", "-U", "/home/abe/.config/herdr/herdr.sock" },
+            startInfo.ArgumentList);
+    }
+
+    [Fact]
+    public void AnUnsetDistroLeavesItToWsl()
+    {
+        var startInfo = StdioHerdrConnection.StartInfoFor("/tmp/herdr.sock", null);
+        Assert.Equal(new[] { "--", "nc", "-U", "/tmp/herdr.sock" }, startInfo.ArgumentList);
+    }
+
     /// Live: skips unless Windows is pointed at a socket inside WSL. Run with
     /// HERDR_SOCKET_PATH=/home/<you>/.config/herdr/herdr.sock
     /// (and MICROMANAGER_WSL_DISTRO=<name> if that is not the default distro).
