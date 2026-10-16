@@ -56,6 +56,32 @@
                 <Label Text="{Binding IsEnabled, StringFormat='{0:enabled|disabled}'}" Grid.Column="1" Grid.Row="2" />
             </Grid>
 
+            <Label Text="Pad keys" FontAttributes="Bold" HorizontalOptions="Center" Margin="0,20,0,0" />
+
+            <HorizontalStackLayout Spacing="5"
+                                   HorizontalOptions="Center"
+                                   BindableLayout.ItemsSource="{Binding KeyLights}">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate>
+                        <VerticalStackLayout Spacing="2">
+                            <BoxView WidthRequest="20"
+                                     HeightRequest="20"
+                                     CornerRadius="4"
+                                     Color="{Binding Color}" />
+                            <Label Text="{Binding KeyId}"
+                                   FontSize="9"
+                                   HorizontalOptions="Center"
+                                   TextColor="{StaticResource SecondaryColor}" />
+                        </VerticalStackLayout>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </HorizontalStackLayout>
+
+            <Label Text="{Binding LastAction}"
+                   FontSize="12"
+                   HorizontalOptions="Center"
+                   TextColor="{StaticResource SecondaryColor}" />
+
             <Button Text="Toggle Bridge"
                     Command="{Binding ToggleEnabledCommand}"
                     HorizontalOptions="Center"
@@ -63,7 +89,7 @@
 
             <CollectionView ItemsSource="{Binding Agents}"
                             Margin="0,20,0,0"
-                            HeightRequest="300">
+                            HeightRequest="180">
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
                         <Frame Padding="10" Margin="5" BorderColor="{StaticResource SecondaryColor}">

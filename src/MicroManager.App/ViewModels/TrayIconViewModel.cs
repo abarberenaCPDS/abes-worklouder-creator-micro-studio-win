@@ -5,7 +5,9 @@ using System.Windows.Input;
 using H.NotifyIcon;
 using Microsoft.Maui.ApplicationModel;
 using MicroManager.Core;
+using MicroManager.Core.Config;
 using MicroManager.Core.Herdr;
+using MicroManager.Core.Pad;
 using MicroManager.App.Services;
 
 namespace MicroManager.App.ViewModels;
@@ -23,6 +25,8 @@ public class TrayIconViewModel : INotifyPropertyChanged
         _bridge.OnDeviceConnected += OnDeviceConnected;
         _bridge.OnDeviceDisconnected += OnDeviceDisconnected;
         _bridge.OnError += OnError;
+        _bridge.OnKeyStateChanged += UpdateKeyState;
+        _bridge.OnActivity += OnActivity;
 
         ToggleEnabledCommand = new Command(ToggleEnabled);
         ShowHideWindowCommand = new Command(ToggleWindowVisibility);
@@ -56,6 +60,40 @@ public class TrayIconViewModel : INotifyPropertyChanged
 
     /// <summary>The port's SemVer version, from windows/Directory.Build.props.</summary>
     public string VersionText { get; } = $"v{MicroManagerInfo.Version}";
+
+    private string _lastAction = string.Empty;
+
+    /// <summary>What the pad was last used for — it has no screen of its own.</summary>
+    public string LastAction
+    {
+        get => _lastAction;
+        set { _lastAction = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>One swatch per physical key, so the pad's lighting is visible here too.</summary>
+    public ObservableCollection<KeyLightViewModel> KeyLights { get; } =
+        new(Enumerable.Range(0, Pad.KeyCount).Select(id => new KeyLightViewModel(id)));
+
+    /// <summary>The shared state-to-colour table, so this list and the pad agree.</summary>
+    private static readonly BridgeConfig Colors = new();
+
+    public void UpdateKeyState(IReadOnlyDictionary<int, int> lit)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            foreach (var light in KeyLights)
+            {
+                light.Color = lit.TryGetValue(light.KeyId, out var packed)
+                    ? Color.FromArgb(PackedRgb.HexString(packed))
+                    : KeyLightViewModel.Dark;
+            }
+        });
+    }
+
+    private void OnActivity(string message)
+    {
+        MainThread.BeginInvokeOnMainThread(() => LastAction = message);
+    }
 
     public ObservableCollection<AgentViewModel> Agents { get; } = new();
 
@@ -168,8 +206,13 @@ public class AgentViewModel : INotifyPropertyChanged
     public string Status
     {
         get => _status;
-        set { _status = value; OnPropertyChanged(); }
+        set { _status = value; OnPropertyChanged(); OnPropertyChanged(nameof(StatusColor)); }
     }
+
+    /// <summary>Same colour the agent's key gets on the pad.</summary>
+    public Color StatusColor => Color.FromArgb(PackedRgb.HexString(Colors.ColorFor(Status)));
+
+    private static readonly BridgeConfig Colors = new();
 
     private string _shortName = string.Empty;
     public string ShortName
@@ -190,4 +233,29 @@ public class AgentViewModel : INotifyPropertyChanged
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
+}
+
+/// <summary>A single key on the on-screen mirror of the pad.</summary>
+public class KeyLightViewModel : INotifyPropertyChanged
+{
+    /// <summary>An unlit key — dark enough to read as off, light enough to see.</summary>
+    public static readonly Color Dark = Color.FromArgb("#1E1E1E");
+
+    public KeyLightViewModel(int keyId) => KeyId = keyId;
+
+    /// <summary>The firmware's key index, which is also what `Pad` addresses.</summary>
+    public int KeyId { get; }
+
+    private Color _color = Dark;
+    public Color Color
+    {
+        get => _color;
+        set
+        {
+            _color = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Color)));
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 }
