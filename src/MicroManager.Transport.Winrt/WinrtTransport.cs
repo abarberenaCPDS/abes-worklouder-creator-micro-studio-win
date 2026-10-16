@@ -124,8 +124,12 @@ public sealed class WinrtTransport : IWlTransport, IDisposable
                 if (!Native.SetupDiEnumDeviceInterfaces(infoSet, IntPtr.Zero, ref hidGuid, memberIndex, ref ifaceData))
                     break;
 
-                if (!Native.SetupDiGetDeviceInterfaceDetail(
-                        infoSet, ref ifaceData, IntPtr.Zero, 0, out var requiredSize, IntPtr.Zero))
+                // First call returns the required buffer size in `requiredSize` and is
+                // expected to fail with ERROR_INSUFFICIENT_BUFFER (122). Treat any
+                // other failure as a skip, and do NOT skip on the expected failure.
+                var sized = Native.SetupDiGetDeviceInterfaceDetail(
+                    infoSet, ref ifaceData, IntPtr.Zero, 0, out var requiredSize, IntPtr.Zero);
+                if (!sized && Marshal.GetLastWin32Error() != Native.ERROR_INSUFFICIENT_BUFFER)
                 {
                     memberIndex++;
                     continue;
@@ -176,8 +180,7 @@ public sealed class WinrtTransport : IWlTransport, IDisposable
                             continue;
                         }
 
-                        var preparsed = Native.HidD_GetPreparsedData(handle);
-                        if (preparsed == IntPtr.Zero)
+                        if (!Native.HidD_GetPreparsedData(handle, out var preparsed) || preparsed == IntPtr.Zero)
                         {
                             memberIndex++;
                             continue;

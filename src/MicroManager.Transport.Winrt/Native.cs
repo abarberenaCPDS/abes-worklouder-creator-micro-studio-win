@@ -15,7 +15,7 @@ internal static class Native
     public static extern bool HidD_GetAttributes(IntPtr device, out HIDD_ATTRIBUTES attributes);
 
     [DllImport("hid.dll", SetLastError = true)]
-    public static extern IntPtr HidD_GetPreparsedData(IntPtr device);
+    public static extern bool HidD_GetPreparsedData(IntPtr device, out IntPtr preparsedData);
 
     [DllImport("hid.dll", SetLastError = true)]
     public static extern bool HidD_FreePreparsedData(IntPtr preparsedData);
@@ -82,6 +82,9 @@ internal static class Native
     public const int DIGCF_PRESENT = 0x00000002;
     public const int DIGCF_DEVICEINTERFACE = 0x00000010;
 
+    /// Error from the first (sizing) SetupDiGetDeviceInterfaceDetail call; expected.
+    public const int ERROR_INSUFFICIENT_BUFFER = 122;
+
     public const uint GENERIC_READ = 0x80000000;
     public const uint GENERIC_WRITE = 0x40000000;
     public const uint FILE_SHARE_READ = 0x00000001;
@@ -108,6 +111,16 @@ internal struct HIDP_CAPS
     public ushort FeatureReportByteLength;
     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 17)]
     public ushort[] Reserved;
+    public ushort NumberLinkCollectionNodes;
+    public ushort NumberInputButtonCaps;
+    public ushort NumberInputValueCaps;
+    public ushort NumberInputDataIndices;
+    public ushort NumberOutputButtonCaps;
+    public ushort NumberOutputValueCaps;
+    public ushort NumberOutputDataIndices;
+    public ushort NumberFeatureButtonCaps;
+    public ushort NumberFeatureValueCaps;
+    public ushort NumberFeatureDataIndices;
 }
 
 [StructLayout(LayoutKind.Sequential)]

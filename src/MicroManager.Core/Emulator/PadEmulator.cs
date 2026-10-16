@@ -65,6 +65,7 @@ public sealed class PadEmulator : IWlTransport
     public event EventHandler<string>? OnDisconnect;
 
     private string _keymapJson = Serialize(StockKeymap());
+    private readonly WireProtocol.Reassembler _reassembler = new();
 
     public PadEmulator()
     {
@@ -87,17 +88,28 @@ public sealed class PadEmulator : IWlTransport
     /// Decodes a client request report, asks the emulated firmware, and raises
     /// the response as one or more input reports — exactly the framing path
     /// real HID traffic takes, so the bridge above cannot tell the difference.
+    ///
+    /// Requests larger than a single report arrive fragmented; reassemble them
+    /// (as the real firmware does) before dispatching.
     public async Task SendReportAsync(byte[] report, CancellationToken cancellationToken = default)
     {
-        var text = DecodeReport(report);
-        if (text is null) return;
+        foreach (var text in _reassembler.CompleteMessages(report))
+        {
+            await HandleRequestAsync(text, cancellationToken).ConfigureAwait(false);
+        }
+    }
 
+    private async Task HandleRequestAsync(string text, CancellationToken cancellationToken)
+    {
         JsonElement request;
         try { request = JsonSerializer.Deserialize<JsonElement>(text)!; }
         catch { return; }
 
-        var method = request.GetProperty("method").GetString()!;
-        var id = request.GetProperty("id").GetInt32();
+        if (!request.TryGetProperty("method", out var methodProp) ||
+            !request.TryGetProperty("id", out var idProp)) return;
+
+        var method = methodProp.GetString()!;
+        var id = idProp.GetInt32();
         var parameters = request.TryGetProperty("params", out var p) ? p : default;
 
         // A real device is never synchronous; answer on the next turn so
@@ -112,18 +124,6 @@ public sealed class PadEmulator : IWlTransport
 
         foreach (var outReport in WireProtocol.EncodeReports(response))
             OnReportReceived?.Invoke(this, outReport);
-    }
-
-    private static string? DecodeReport(byte[] report)
-    {
-        var start = report.Length > 2 && report[0] == WireProtocol.ReportId ? 1 : 0;
-        if (report.Length <= start + 2) return null;
-        var channel = report[start];
-        var length = report[start + 1];
-        if (channel != WireProtocol.ChannelRpc || length == 0 || length > WireProtocol.MaxChunk ||
-            report.Length < start + 2 + length)
-            return null;
-        return Encoding.UTF8.GetString(report, start + 2, (int)length);
     }
 
     /// Returns the result JSON, or an error message for methods this firmware

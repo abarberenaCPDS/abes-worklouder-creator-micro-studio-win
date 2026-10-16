@@ -1,6 +1,19 @@
 # Windows 11 port plan — Micro Manager (MAUI / .NET 10)
 
-Status: **Phase 0 ✅** — HID spike verified against real Creator Micro 2 (VID 0x303A / PID 0x8298, firmware 0.6.3). Successfully enumerated HID interfaces, found the vendor-collection interface (usage page 0xFF00), and exchanged JSON-RPC reports (`sys.version` → `{"result":{"version":"0.6.3"},"id":1}`). **Phase 1 ✅** — `MicroManager.Core` (net10.0) ported, all 65 xUnit tests pass. **Phase 2 in progress** — `MicroManager.Transport.Winrt` (net10.0-windows) built with P/Invoke hid.dll transport. Next: `MicroManager.App` MAUI tray app.
+Status: **Phase 2 in progress** — the MAUI app builds and launches via F5 (VS 2026, unpackaged) and drives the real Creator Micro 2 over raw HID.
+
+## Progress checklist
+
+- [x] Phase 0 — HID spike against real Creator Micro 2 (VID 0x303A / PID 0x8298, fw 0.6.3)
+- [x] Phase 1 — `MicroManager.Core` ported, 65/65 tests pass
+- [x] Phase 2 (shell) — MAUI app builds + launches via F5
+- [x] Phase 2 (device) — `WinrtTransport` wired into `BridgeService`; verified against real hardware (`device.status`, `sys.version`, `v.oai.thstatus` all answered)
+- [ ] Phase 2 (keymap) — `KeymapManager.ApplyAsync` rejected by the firmware ("keymap not accepted"); agent-key binding not yet working
+- [ ] Phase 2 (tray) — real tray icon via `H.NotifyIcon.Maui` (referenced but unused)
+- [ ] Phase 2 (features) — agent-key colours, dial/joystick, on/off switch, macro keys, login item
+- [ ] Upstream issue — propose the `windows/` subdirectory before Phase 2 grows
+- [ ] Phase 3 (parity) — stack float window, land panel, emulator window, wide-key default
+- [ ] Phase 3 (packaging/CI) — unpackaged zip v1, `windows-latest` CI job publishing `MicroManager-win-x64.zip`
 
 Goal: an MVP tray app for Windows 11 that does what the macOS menu-bar app does — light pad keys per Herdr agent state and jump to agents on key press — then reach full parity. MVP first, full parity after. Code lands in `windows/` as a separate solution alongside the Swift package.
 

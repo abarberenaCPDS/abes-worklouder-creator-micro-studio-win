@@ -4,6 +4,7 @@ using MicroManager.Core.Herdr;
 using MicroManager.Core.Keymap;
 using MicroManager.Core.Pad;
 using MicroManager.Core.Transport;
+using MicroManager.Transport.Winrt;
 
 namespace MicroManager.App.Services;
 
@@ -23,13 +24,14 @@ public interface IBridgeService
 
 public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
 {
-    private readonly RpcDevice _rpcDevice;
     private readonly BridgeConfig _config;
+    private readonly bool _useEmulator;
     private readonly CancellationTokenSource _cts = new();
     private Task? _pollTask;
+    private RpcDevice? _rpcDevice;
     private bool _disposed;
 
-    public bool IsConnected => _rpcDevice.IsConnected;
+    public bool IsConnected => _rpcDevice?.IsConnected ?? false;
     public bool IsEnabled { get; set; } = true;
 
     public event Action<List<HerdrAgent>>? OnAgentStateChanged;
@@ -37,24 +39,26 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
     public event Action? OnDeviceDisconnected;
     public event Action<string>? OnError;
 
-    public BridgeService()
-    {
-        var emulator = new PadEmulator();
-        var transport = (IWlTransport)emulator;
-        _rpcDevice = new RpcDevice(transport);
-        _config = new BridgeConfig();
+    public BridgeService() : this(useEmulator: IsEmulatorForced()) { }
 
-        _rpcDevice.OnDisconnect += (_, _) =>
-        {
-            OnDeviceDisconnected?.Invoke();
-        };
+    public BridgeService(bool useEmulator)
+    {
+        _useEmulator = useEmulator;
+        _config = new BridgeConfig();
     }
+
+    /// <summary>
+    /// Set MICROMANAGER_EMULATOR=1 to run against the in-process pad emulator
+    /// instead of looking for a real Creator Micro 2 (useful without hardware).
+    /// </summary>
+    private static bool IsEmulatorForced() =>
+        Environment.GetEnvironmentVariable("MICROMANAGER_EMULATOR") is "1" or "true" or "True" or "TRUE";
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            await _rpcDevice.ConnectAsync(cancellationToken);
+            _rpcDevice = await OpenDeviceAsync(cancellationToken).ConfigureAwait(false);
             OnDeviceConnected?.Invoke();
 
             try
@@ -92,6 +96,41 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Prefer the real Creator Micro 2 over raw HID; fall back to the in-process
+    /// emulator when no device is attached so the app still runs in development.
+    /// </summary>
+    private async Task<RpcDevice> OpenDeviceAsync(CancellationToken cancellationToken)
+    {
+        if (!_useEmulator)
+        {
+            var device = CreateDevice(new WinrtTransport());
+            try
+            {
+                await device.ConnectAsync(cancellationToken).ConfigureAwait(false);
+                System.Diagnostics.Debug.WriteLine($"Connected via {device.Transport}");
+                return device;
+            }
+            catch (DeviceNotConnectedException)
+            {
+                device.Disconnect();
+                OnError?.Invoke("Creator Micro 2 not found; using the pad emulator.");
+            }
+        }
+
+        var emulator = CreateDevice(new PadEmulator());
+        await emulator.ConnectAsync(cancellationToken).ConfigureAwait(false);
+        System.Diagnostics.Debug.WriteLine("Connected via pad emulator");
+        return emulator;
+    }
+
+    private RpcDevice CreateDevice(IWlTransport transport)
+    {
+        var device = new RpcDevice(transport);
+        device.OnDisconnect += (_, _) => OnDeviceDisconnected?.Invoke();
+        return device;
+    }
+
     public async Task StopAsync()
     {
         _cts.Cancel();
@@ -100,11 +139,13 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
             try { await _pollTask; } catch { }
         }
 
-        try { _rpcDevice.Disconnect(); } catch { }
+        try { _rpcDevice?.Disconnect(); } catch { }
     }
 
     private async Task PollOnceAsync(CancellationToken ct)
     {
+        if (_rpcDevice is null) return;
+
         var agents = await HerdrClient.ListAgentsAsync(ct);
 
         var threads = new List<Oai.Thread>();
@@ -150,7 +191,7 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
     public void Dispose()
     {
         _cts.Cancel();
-        _rpcDevice.Disconnect();
+        _rpcDevice?.Disconnect();
         _disposed = true;
     }
 
@@ -163,7 +204,10 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
             {
                 try { await _pollTask; } catch { }
             }
-            await _rpcDevice.DisposeAsync();
+            if (_rpcDevice is not null)
+            {
+                await _rpcDevice.DisposeAsync();
+            }
             _disposed = true;
         }
     }
