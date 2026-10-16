@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MicroManager.App.Views.MainPage"
+             Title="Micro Manager">
+    <VerticalStackLayout Spacing="20" Padding="30">
+        <Label Text="Micro Manager"
+               FontSize="24"
+               FontAttributes="Bold"
+               HorizontalOptions="Center"
+               TextColor="{StaticResource PrimaryColor}" />
+        
+        <Label Text="Work Louder Creator Micro 2 Bridge"
+               FontSize="16"
+               HorizontalOptions="Center"
+               TextColor="{StaticResource SecondaryColor}" />
+        
+        <Grid ColumnDefinitions="*,*" RowDefinitions="*,*,*" Spacing="10" Margin="0,20,0,0">
+            <Label Text="Status" Grid.Column="0" Grid.Row="0" FontAttributes="Bold" />
+            <Label Text="{Binding StatusText}" Grid.Column="1" Grid.Row="0" />
+            
+            <Label Text="Device" Grid.Column="0" Grid.Row="1" FontAttributes="Bold" />
+            <Label Text="{Binding IsConnected, StringFormat='{0:connected|disconnected}'}" Grid.Column="1" Grid.Row="1" />
+            
+            <Label Text="Bridge" Grid.Column="0" Grid.Row="2" FontAttributes="Bold" />
+            <Label Text="{Binding IsEnabled, StringFormat='{0:enabled|disabled}'}" Grid.Column="1" Grid.Row="2" />
+        </Grid>
+
+        <Button Text="Toggle Bridge"
+                Command="{Binding ToggleEnabledCommand}"
+                HorizontalOptions="Center"
+                Margin="0,20,0,0" />
+
+        <CollectionView ItemsSource="{Binding Agents}"
+                        Margin="0,20,0,0"
+                        HeightRequest="300">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Frame Padding="10" Margin="5" BorderColor="{StaticResource SecondaryColor}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Label Text="{Binding AgentName}" FontAttributes="Bold" Grid.Column="0" />
+                            <Label Text="{Binding Status}" TextColor="{Binding StatusColor}" Grid.Column="1" />
+                        </Grid>
+                    </Frame>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </VerticalStackLayout>
+</ContentPage>

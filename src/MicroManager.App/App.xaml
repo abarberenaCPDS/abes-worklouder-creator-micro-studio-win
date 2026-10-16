@@ -1,0 +1,17 @@
+<Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MicroManager.App.App">
+    <Application.Resources>
+        <ResourceDictionary>
+            <Color x:Key="PrimaryColor">#007ACC</Color>
+            <Color x:Key="SecondaryColor">#6C757D</Color>
+            <Color x:Key="BlockedColor">#FF2D2D</Color>
+            <Color x:Key="WorkingColor">#FFA000</Color>
+            <Color x:Key="DoneColor">#00B0FF</Color>
+            <Color x:Key="IdleColor">#00C853</Color>
+            <Color x:Key="UnknownColor">#00C853</Color>
+            <Color x:Key="SurfaceColor">#FFFFFF</Color>
+            <Color x:Key="OnSurfaceColor">#000000</Color>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

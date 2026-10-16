@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
+         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         IgnorableNamespaces="uap mp">
+
+  <Identity
+    Name="cc.worklouder.micromanager"
+    Publisher="CN=MicroManager"
+    Version="0.1.0.0" />
+
+  <mp:PhoneIdentity PhoneProductId="12345678-1234-1234-1234-123456789012" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+
+  <Properties>
+    <DisplayName>Micro Manager</DisplayName>
+    <PublisherDisplayName>Micro Manager</PublisherDisplayName>
+    <Logo>Resources\Images\appicon.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.19041.0" MaxVersionTested="10.0.22621.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="x-generate"/>
+  </Resources>
+
+  <Applications>
+    <Application Id="App"
+                 Executable="$targetnametoken$.exe"
+                 EntryPoint="$targetentrypoint$">
+      <uap:VisualElements
+        DisplayName="Micro Manager"
+        Square150x150Logo="Resources\Images\appicon.png"
+        Square44x44Logo="Resources\Images\appicon.png"
+        BackgroundColor="#007ACC"
+        Description="Micro Manager - Work Louder Creator Micro 2 bridge">
+        <uap:DefaultTile ShortName="Micro Manager"/>
+        <uap:SplashScreen Image="Resources\Images\appicon.png" />
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <Capability Name="internetClient"/>
+  </Capabilities>
+
+</Package>
