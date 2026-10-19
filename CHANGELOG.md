@@ -8,6 +8,15 @@ console harness, so there is nothing else to keep in step.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-19
+
+### Fixed
+
+- `fs.read` keymap responses now handle the Creator Micro firmware's
+  `{method, params, id}` response envelope as well as the standard `result`
+  envelope. The previous client ignored `params.data` and reported “missing or
+  malformed `data` field” during keymap validation.
+
 ## [0.4.0] - 2026-10-19
 
 ### Added
@@ -41,7 +50,6 @@ console harness, so there is nothing else to keep in step.
   write without deleting the original.
 
 ### Fixed
-
 - Herdr CLI actions from a WSL-backed Studio now resolve `WL_HERDR_PATH` (including
   `~`) inside the selected distro and invoke the executable by absolute path.
   Previously `env herdr` relied on WSL's noninteractive `PATH`, which omitted

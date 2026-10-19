@@ -170,8 +170,15 @@ public class RpcDevice : IWlDevice, IAsyncDisposable
             object? result = null;
             if (document.TryGetProperty("error", out var errorProp) && errorProp.ValueKind == JsonValueKind.Object)
                 error = errorProp.GetProperty("message").GetString() ?? "api error";
+            // The Creator Micro firmware returns `{method, params, id}` while
+            // JSON-RPC libraries commonly use `{result, id}`. Accept both:
+            // `params` is the firmware's return payload, not a notification
+            // when the response carries an id.
             if (document.TryGetProperty("result", out var resultProp))
                 result = resultProp.ValueKind == JsonValueKind.Null ? null : (object)resultProp;
+            else if (document.TryGetProperty("params", out var responseParams) &&
+                     responseParams.ValueKind != JsonValueKind.Null)
+                result = responseParams;
 
             JsonRpcResponse response;
             if (result is JsonElement je) response = new JsonRpcResponse(id, je.GetRawText(), error);

@@ -44,7 +44,7 @@ public sealed class StudioConfigStore
             try
             {
                 File.WriteAllText(temp, json.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
-                File.Move(temp, Path, overwrite: true);
+                MoveIntoPlace(temp, Path);
             }
             finally
             {
@@ -60,6 +60,25 @@ public sealed class StudioConfigStore
         {
             try { return new FileStream(LockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
             catch (IOException) when (DateTime.UtcNow < deadline) { Thread.Sleep(25); }
+        }
+    }
+
+    private static void MoveIntoPlace(string temp, string destination)
+    {
+        // Antivirus/indexing can briefly hold a just-written config file open
+        // on Windows. Retry the atomic same-volume replacement, but still fail
+        // visibly if another process keeps the destination locked.
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                File.Move(temp, destination, overwrite: true);
+                return;
+            }
+            catch (Exception ex) when (attempt < 20 && (ex is IOException or UnauthorizedAccessException))
+            {
+                Thread.Sleep(50);
+            }
         }
     }
 }

@@ -45,14 +45,14 @@ remote rename is an external action and is not performed by this worktree.
   leaving. F5/hardware validation remains.
 - [x] Phase 5 implementation — Herdr status/mapping page and usage/config docs
   are in place. Remaining: F5 visual pass, real pad/Herdr action verification,
-  and final acceptance checklist. Current SemVer is 0.4.0; the GitHub remote
+  and final acceptance checklist. Current SemVer is 0.4.1; the GitHub remote
   rename remains external to this worktree.
 
 ### Verification so far
 
 - `dotnet build AbesWorkLouderCreatorMicroStudio.Windows.sln` succeeds (existing
   nullable/obsolete warnings remain).
-- `dotnet test tests\CreatorMicroStudio.Core.Tests\CreatorMicroStudio.Core.Tests.csproj --filter "FullyQualifiedName!~HerdrWslTests"` passes: 158 tests.
+- `dotnet test tests\CreatorMicroStudio.Core.Tests\CreatorMicroStudio.Core.Tests.csproj --filter "FullyQualifiedName!~HerdrWslTests"` passes: 159 tests.
 - Setting `$env:MICROMANAGER_EMULATOR = "1"` and running
   `dotnet run --no-build --project src\CreatorMicroStudio.Console` passes the
   emulator HID/keymap smoke test.
@@ -61,6 +61,7 @@ remote rename is an external action and is not performed by this worktree.
   Herdr session before closing Phase 5.
 - The WSL Herdr CLI path-resolution test passes with `WL_HERDR_PATH=~/.local/bin/herdr`;
   `herdr tab rename --help` confirms the CLI syntax is `tab rename <TAB_ID> <LABEL>...`.
+- The keymap parser now accepts firmware responses using `{method, params, id}` as well as `result`; a regression test covers `fs.read`'s double-encoded `data` field.
 - Launching the MAUI window and visually checking the packaged taskbar/tray icon
   still requires **F5 in Visual Studio 2026**; a shell launch is not a valid UI
   check for this app.
