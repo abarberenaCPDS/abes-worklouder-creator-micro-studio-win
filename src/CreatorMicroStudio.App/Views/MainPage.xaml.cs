@@ -1,4 +1,5 @@
 using Microsoft.Maui.Controls;
+using AbesWorkLouderCreatorMicroStudio.Windows.Controls;
 using AbesWorkLouderCreatorMicroStudio.Windows.Services;
 using AbesWorkLouderCreatorMicroStudio.Windows.ViewModels;
 using System.ComponentModel;
@@ -17,7 +18,23 @@ public partial class MainPage : ContentPage
         ControlsHost.Content = new ControlsPage(bridge);
         LightingHost.Content = _lightingPage;
         HerdrHost.Content = new HerdrPage(bridge);
+        DashboardPadMap.InputTapped += OnDashboardInputTapped;
         BindingContext = viewModel;
+    }
+
+    /// <summary>
+    /// A tap on the dashboard map runs the input through the bridge, like the
+    /// pad's own key, and lights the tapped control so the click has feedback.
+    /// </summary>
+    private void OnDashboardInputTapped(object? sender, PadMapInputEventArgs e)
+    {
+        DashboardPadMap.Flash(e.InputId);
+
+        if (BindingContext is TrayIconViewModel viewModel
+            && viewModel.RunInputCommand.CanExecute(e.InputId))
+        {
+            viewModel.RunInputCommand.Execute(e.InputId);
+        }
     }
 
     protected override void OnBindingContextChanged()

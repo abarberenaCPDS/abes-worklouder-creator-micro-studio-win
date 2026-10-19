@@ -27,11 +27,14 @@ public class TrayIconViewModel : INotifyPropertyChanged
         _bridge.OnError += OnError;
         _bridge.OnKeyStateChanged += UpdateKeyState;
         _bridge.OnActivity += OnActivity;
+        _bridge.OnBindingsChanged += BindingsChanged;
 
         ToggleEnabledCommand = new Command(ToggleEnabled);
         ShowHideWindowCommand = new Command(ToggleWindowVisibility);
         ExitApplicationCommand = new Command(ExitApplication);
         NavigatePageCommand = new Command<string>(NavigatePage);
+        EditControlsCommand = new Command(() => SelectedPage = "Controls");
+        RunInputCommand = new Command<int>(RunInput);
 
         Lights = new LightingViewModel(bridge)
         {
@@ -48,6 +51,12 @@ public class TrayIconViewModel : INotifyPropertyChanged
     public ICommand ShowHideWindowCommand { get; }
     public ICommand ExitApplicationCommand { get; }
     public ICommand NavigatePageCommand { get; }
+
+    /// <summary>Takes the dashboard's pad map to the Controls page.</summary>
+    public Command EditControlsCommand { get; }
+
+    /// <summary>Runs a physical input exactly as the pad would when its key is pressed.</summary>
+    public Command<int> RunInputCommand { get; }
 
     private string _selectedPage = "Studio";
     public string SelectedPage
@@ -85,8 +94,25 @@ public class TrayIconViewModel : INotifyPropertyChanged
     public bool IsConnected
     {
         get => _isConnected;
-        set { _isConnected = value; OnPropertyChanged(); }
+        set
+        {
+            _isConnected = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ConnectionColor));
+            OnPropertyChanged(nameof(ConnectionText));
+        }
     }
+
+    /// <summary>The palette's green when a pad (or the emulator) is up, muted otherwise.</summary>
+    public Color ConnectionColor => IsConnected ? ConnectedGreen : DisconnectedFaint;
+
+    /// <summary>The dashboard's status pill: what the pad link is doing, in a word.</summary>
+    public string ConnectionText => !IsConnected
+        ? "Waiting for the pad"
+        : UsingEmulator ? "Pad emulator" : "Connected";
+
+    private static readonly Color ConnectedGreen = Color.FromArgb("#3DDC84");
+    private static readonly Color DisconnectedFaint = Color.FromArgb("#6C7C93");
 
     private bool _isEnabled = true;
     public bool IsEnabled
@@ -105,6 +131,12 @@ public class TrayIconViewModel : INotifyPropertyChanged
     /// <summary>The port's SemVer version, from windows/Directory.Build.props.</summary>
     public string VersionText { get; } = $"v{StudioInfo.Version}";
 
+    /// <summary>The live host-side bindings, so the pad map can label each keycap.</summary>
+    public KeyBindings Bindings => _bridge.Bindings;
+
+    /// <summary>True when no pad was opened and the in-process emulator is standing in.</summary>
+    public bool UsingEmulator => _bridge.UsingEmulator;
+
     private string _lastAction = string.Empty;
 
     /// <summary>What the pad was last used for — it has no screen of its own.</summary>
@@ -118,6 +150,35 @@ public class TrayIconViewModel : INotifyPropertyChanged
     public ObservableCollection<KeyLightViewModel> KeyLights { get; } =
         new(Enumerable.Range(0, Pad.KeyCount).Select(id => new KeyLightViewModel(id)));
 
+    private IReadOnlyDictionary<int, Color> _keyColorMap = new Dictionary<int, Color>();
+
+    /// <summary>
+    /// Live lit colours for the pad map, keyed by physical key id. Rebuilt rather
+    /// than mutated so the map's binding swaps to a fresh picture each poll.
+    /// </summary>
+    public IReadOnlyDictionary<int, Color> KeyColorMap
+    {
+        get => _keyColorMap;
+        private set
+        {
+            _keyColorMap = value;
+            OnPropertyChanged();
+        }
+    }
+
+    private IReadOnlyList<string> _agentNames = Array.Empty<string>();
+
+    /// <summary>Agent names in slot order, so the pad map can name its agent keys.</summary>
+    public IReadOnlyList<string> AgentNames
+    {
+        get => _agentNames;
+        private set
+        {
+            _agentNames = value;
+            OnPropertyChanged();
+        }
+    }
+
     /// <summary>The shared state-to-colour table, so this list and the pad agree.</summary>
     private static readonly BridgeConfig Colors = new();
 
@@ -125,12 +186,22 @@ public class TrayIconViewModel : INotifyPropertyChanged
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
+            var map = new Dictionary<int, Color>();
             foreach (var light in KeyLights)
             {
-                light.Color = lit.TryGetValue(light.KeyId, out var packed)
-                    ? Color.FromArgb(PackedRgb.HexString(packed))
-                    : KeyLightViewModel.Dark;
+                if (lit.TryGetValue(light.KeyId, out var packed))
+                {
+                    var color = Color.FromArgb(PackedRgb.HexString(packed));
+                    light.Color = color;
+                    map[light.KeyId] = color;
+                }
+                else
+                {
+                    light.Color = KeyLightViewModel.Dark;
+                }
             }
+
+            KeyColorMap = map;
         });
     }
 
@@ -138,6 +209,26 @@ public class TrayIconViewModel : INotifyPropertyChanged
     {
         MainThread.BeginInvokeOnMainThread(() => LastAction = message);
     }
+
+    /// <summary>
+    /// Runs an input exactly as a physical press would. The bridge reports what
+    /// it did through <see cref="OnActivity"/>, so only a failure needs saying here.
+    /// </summary>
+    private async void RunInput(int inputId)
+    {
+        try
+        {
+            await _bridge.TestActionAsync(inputId).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            MainThread.BeginInvokeOnMainThread(
+                () => LastAction = $"Input {inputId} failed: {ex.Message}");
+        }
+    }
+
+    private void BindingsChanged(KeyBindings _) =>
+        MainThread.BeginInvokeOnMainThread(() => OnPropertyChanged(nameof(Bindings)));
 
     public ObservableCollection<AgentViewModel> Agents { get; } = new();
 
@@ -174,6 +265,8 @@ public class TrayIconViewModel : INotifyPropertyChanged
                     });
                 }
             }
+
+            AgentNames = Agents.Select(a => a.ShortName).ToList();
         });
     }
 
@@ -183,6 +276,8 @@ public class TrayIconViewModel : INotifyPropertyChanged
         StatusText = _bridge.UsingEmulator
             ? "Connected — pad emulator (Creator Micro 2 not found)"
             : "Connected";
+        OnPropertyChanged(nameof(UsingEmulator));
+        OnPropertyChanged(nameof(ConnectionText));
     }
 
     private void OnDeviceDisconnected()
@@ -190,6 +285,7 @@ public class TrayIconViewModel : INotifyPropertyChanged
         IsConnected = false;
         StatusText = "Disconnected";
         Agents.Clear();
+        AgentNames = Array.Empty<string>();
     }
 
     private void OnError(string error)

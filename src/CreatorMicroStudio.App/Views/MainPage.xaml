@@ -2,9 +2,10 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:tb="https://notifyicon.com/"
+             xmlns:controls="clr-namespace:AbesWorkLouderCreatorMicroStudio.Windows.Controls"
              x:Class="AbesWorkLouderCreatorMicroStudio.Windows.Views.MainPage"
-              Title="Abe's WorkLouder Creator Micro Studio for Windows">
-    <Grid ColumnDefinitions="190,*">
+             Title="Abe's WorkLouder Creator Micro Studio for Windows">
+    <Grid ColumnDefinitions="248,*" BackgroundColor="{StaticResource StudioBackground}">
         <tb:TaskbarIcon
             x:Name="TrayIcon"
             Grid.ColumnSpan="2"
@@ -24,109 +25,246 @@
             </FlyoutBase.ContextFlyout>
         </tb:TaskbarIcon>
 
-        <Border Grid.Column="0" Padding="14,18" BackgroundColor="#151C28" Stroke="#293548">
-            <VerticalStackLayout Spacing="8">
-                <Label Text="ABE'S STUDIO" FontSize="16" FontAttributes="Bold" TextColor="#F5D77A" Margin="4,0,0,16" />
-                <Button Text="Studio" Command="{Binding NavigatePageCommand}" CommandParameter="Studio" />
-                <Button Text="Controls" Command="{Binding NavigatePageCommand}" CommandParameter="Controls" />
-                <Button Text="Lighting" Command="{Binding NavigatePageCommand}" CommandParameter="Lighting" />
-                <Button Text="Herdr" Command="{Binding NavigatePageCommand}" CommandParameter="Herdr" />
-                <Button Text="Inspector" Command="{Binding NavigatePageCommand}" CommandParameter="Inspector" />
-                <BoxView HeightRequest="1" Color="#344155" Margin="0,12" />
-                <Label Text="{Binding StatusText}" FontSize="11" TextColor="#AEB8C7" />
-                <Label Text="{Binding VersionText}" FontSize="11" TextColor="#AEB8C7" />
-            </VerticalStackLayout>
+        <!-- Sidebar rail -->
+        <Border Grid.Column="0"
+                BackgroundColor="{StaticResource StudioSidebar}"
+                StrokeThickness="0"
+                Padding="16,20">
+            <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="18">
+                <VerticalStackLayout Grid.Row="0" Spacing="3">
+                    <Label Text="ABE'S STUDIO" Style="{StaticResource CardEyebrow}" />
+                    <Label Text="Creator Micro Studio" Style="{StaticResource SectionTitle}" FontSize="19" />
+                    <Label Text="for Windows" Style="{StaticResource CaptionLabel}" />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Grid.Row="1" Spacing="4">
+                    <Border Style="{StaticResource NavItem}">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding NavigatePageCommand}" CommandParameter="Studio" />
+                        </Border.GestureRecognizers>
+                        <Border.Triggers>
+                            <DataTrigger TargetType="Border" Binding="{Binding SelectedPage}" Value="Studio">
+                                <Setter Property="BackgroundColor" Value="{StaticResource StudioSelection}" />
+                                <Setter Property="Stroke" Value="{StaticResource StudioAccent}" />
+                            </DataTrigger>
+                        </Border.Triggers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <Label Text="&#xE80F;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                                   TextColor="{StaticResource StudioTextMuted}" VerticalOptions="Center" />
+                            <Label Text="Studio" Style="{StaticResource ValueLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <Border Style="{StaticResource NavItem}">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding NavigatePageCommand}" CommandParameter="Controls" />
+                        </Border.GestureRecognizers>
+                        <Border.Triggers>
+                            <DataTrigger TargetType="Border" Binding="{Binding SelectedPage}" Value="Controls">
+                                <Setter Property="BackgroundColor" Value="{StaticResource StudioSelection}" />
+                                <Setter Property="Stroke" Value="{StaticResource StudioAccent}" />
+                            </DataTrigger>
+                        </Border.Triggers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <Label Text="&#xE765;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                                   TextColor="{StaticResource StudioTextMuted}" VerticalOptions="Center" />
+                            <Label Text="Controls" Style="{StaticResource ValueLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <Border Style="{StaticResource NavItem}">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding NavigatePageCommand}" CommandParameter="Lighting" />
+                        </Border.GestureRecognizers>
+                        <Border.Triggers>
+                            <DataTrigger TargetType="Border" Binding="{Binding SelectedPage}" Value="Lighting">
+                                <Setter Property="BackgroundColor" Value="{StaticResource StudioSelection}" />
+                                <Setter Property="Stroke" Value="{StaticResource StudioAccent}" />
+                            </DataTrigger>
+                        </Border.Triggers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <Label Text="&#xE706;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                                   TextColor="{StaticResource StudioTextMuted}" VerticalOptions="Center" />
+                            <Label Text="Lighting" Style="{StaticResource ValueLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <Border Style="{StaticResource NavItem}">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding NavigatePageCommand}" CommandParameter="Herdr" />
+                        </Border.GestureRecognizers>
+                        <Border.Triggers>
+                            <DataTrigger TargetType="Border" Binding="{Binding SelectedPage}" Value="Herdr">
+                                <Setter Property="BackgroundColor" Value="{StaticResource StudioSelection}" />
+                                <Setter Property="Stroke" Value="{StaticResource StudioAccent}" />
+                            </DataTrigger>
+                        </Border.Triggers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <Label Text="&#xE8BD;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                                   TextColor="{StaticResource StudioTextMuted}" VerticalOptions="Center" />
+                            <Label Text="Herdr" Style="{StaticResource ValueLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+
+                    <Border Style="{StaticResource NavItem}">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding NavigatePageCommand}" CommandParameter="Inspector" />
+                        </Border.GestureRecognizers>
+                        <Border.Triggers>
+                            <DataTrigger TargetType="Border" Binding="{Binding SelectedPage}" Value="Inspector">
+                                <Setter Property="BackgroundColor" Value="{StaticResource StudioSelection}" />
+                                <Setter Property="Stroke" Value="{StaticResource StudioAccent}" />
+                            </DataTrigger>
+                        </Border.Triggers>
+                        <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                            <Label Text="&#xE9D9;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                                   TextColor="{StaticResource StudioTextMuted}" VerticalOptions="Center" />
+                            <Label Text="Inspector" Style="{StaticResource ValueLabel}" />
+                        </HorizontalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Grid.Row="3" Spacing="9">
+                    <BoxView Style="{StaticResource StudioDivider}" />
+                    <HorizontalStackLayout Spacing="8">
+                        <BoxView WidthRequest="9" HeightRequest="9" CornerRadius="5"
+                                 Color="{Binding ConnectionColor}" VerticalOptions="Center" />
+                        <Label Text="{Binding StatusText}" Style="{StaticResource CaptionLabel}" LineBreakMode="TailTruncation" />
+                    </HorizontalStackLayout>
+                    <Label Text="{Binding VersionText}" Style="{StaticResource CaptionLabel}"
+                           TextColor="{StaticResource StudioTextFaint}" />
+                </VerticalStackLayout>
+            </Grid>
         </Border>
 
+        <!-- Studio dashboard -->
         <ScrollView Grid.Column="1" IsVisible="{Binding IsStudioPage}">
-        <VerticalStackLayout Spacing="20" Padding="30">
-             <Label Text="Abe's WorkLouder Creator Micro Studio for Windows"
-                   FontSize="24"
-                   FontAttributes="Bold"
-                   HorizontalOptions="Center"
-                   TextColor="{StaticResource PrimaryColor}" />
+            <VerticalStackLayout Padding="30,26" Spacing="18">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+                    <VerticalStackLayout Grid.Column="0" Spacing="3">
+                        <Label Text="Your Studio" Style="{StaticResource PageTitle}" />
+                        <Label Text="Your pad, its agents, and what every input is set to do." Style="{StaticResource PageSubtitle}" />
+                    </VerticalStackLayout>
 
-            <Label Text="Work Louder Creator Micro 2 Bridge"
-                   FontSize="16"
-                   HorizontalOptions="Center"
-                   TextColor="{StaticResource SecondaryColor}" />
+                    <Border Grid.Column="1"
+                            Style="{StaticResource TightCard}"
+                            Padding="12,6"
+                            VerticalOptions="Center">
+                        <HorizontalStackLayout Spacing="8">
+                            <BoxView WidthRequest="9" HeightRequest="9" CornerRadius="5"
+                                     Color="{Binding ConnectionColor}" VerticalOptions="Center" />
+                            <Label Text="{Binding ConnectionText}" Style="{StaticResource ValueLabel}" FontSize="12" />
+                        </HorizontalStackLayout>
+                    </Border>
+                </Grid>
 
-            <Label Text="{Binding VersionText}"
-                   FontSize="12"
-                   HorizontalOptions="Center"
-                   TextColor="{StaticResource SecondaryColor}" />
+                <Grid ColumnDefinitions="*,340" ColumnSpacing="18">
+                    <!-- Pad map -->
+                    <Border Grid.Column="0" Style="{StaticResource Card}">
+                        <VerticalStackLayout Spacing="14">
+                            <VerticalStackLayout Spacing="3">
+                                <Label Text="Creator Micro 2" Style="{StaticResource SectionTitle}" />
+                                <Label Text="Tap any key, the dial or the joystick to run it, exactly as the pad would."
+                                       Style="{StaticResource CaptionLabel}" />
+                            </VerticalStackLayout>
 
-            <Grid ColumnDefinitions="*,*" RowDefinitions="*,*,*" RowSpacing="10" ColumnSpacing="10" Margin="0,20,0,0">
-                <Label Text="Status" Grid.Column="0" Grid.Row="0" FontAttributes="Bold" />
-                <Label Text="{Binding StatusText}" Grid.Column="1" Grid.Row="0" />
+                            <controls:PadMapView x:Name="DashboardPadMap"
+                                                 HeightRequest="360"
+                                                 KeyColors="{Binding KeyColorMap}"
+                                                 AgentNames="{Binding AgentNames}"
+                                                 Bindings="{Binding Bindings}" />
 
-                <Label Text="Device" Grid.Column="0" Grid.Row="1" FontAttributes="Bold" />
-                <Label Text="{Binding IsConnected, StringFormat='{0:connected|disconnected}'}" Grid.Column="1" Grid.Row="1" />
+                            <Label Text="{Binding LastAction}" Style="{StaticResource CaptionLabel}"
+                                   TextColor="{StaticResource StudioTextFaint}" />
 
-                <Label Text="Bridge" Grid.Column="0" Grid.Row="2" FontAttributes="Bold" />
-                <Label Text="{Binding IsEnabled, StringFormat='{0:enabled|disabled}'}" Grid.Column="1" Grid.Row="2" />
-            </Grid>
-
-            <Label Text="Pad keys" FontAttributes="Bold" HorizontalOptions="Center" Margin="0,20,0,0" />
-
-            <HorizontalStackLayout Spacing="5"
-                                   HorizontalOptions="Center"
-                                   BindableLayout.ItemsSource="{Binding KeyLights}">
-                <BindableLayout.ItemTemplate>
-                    <DataTemplate>
-                        <VerticalStackLayout Spacing="2">
-                            <BoxView WidthRequest="20"
-                                     HeightRequest="20"
-                                     CornerRadius="4"
-                                     Color="{Binding Color}" />
-                            <Label Text="{Binding KeyId}"
-                                   FontSize="9"
-                                   HorizontalOptions="Center"
-                                   TextColor="{StaticResource SecondaryColor}" />
+                            <Button Text="Edit controls…"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Command="{Binding EditControlsCommand}"
+                                    HorizontalOptions="Start" />
                         </VerticalStackLayout>
-                    </DataTemplate>
-                </BindableLayout.ItemTemplate>
-            </HorizontalStackLayout>
+                    </Border>
 
-            <Label Text="{Binding LastAction}"
-                   FontSize="12"
-                   HorizontalOptions="Center"
-                   TextColor="{StaticResource SecondaryColor}" />
+                    <!-- Detail column -->
+                    <VerticalStackLayout Grid.Column="1" Spacing="14">
+                        <Border Style="{StaticResource TightCard}">
+                            <VerticalStackLayout Spacing="8">
+                                <Label Text="CONNECTION" Style="{StaticResource CardEyebrow}" />
+                                <HorizontalStackLayout Spacing="8">
+                                    <BoxView WidthRequest="9" HeightRequest="9" CornerRadius="5"
+                                             Color="{Binding ConnectionColor}" VerticalOptions="Center" />
+                                    <Label Text="Creator Micro 2" Style="{StaticResource ValueLabel}" FontAttributes="Bold" />
+                                </HorizontalStackLayout>
+                                <Label Text="{Binding StatusText}" Style="{StaticResource CaptionLabel}" />
+                            </VerticalStackLayout>
+                        </Border>
 
-            <Button Text="Toggle Bridge"
-                    Command="{Binding ToggleEnabledCommand}"
-                    HorizontalOptions="Center"
-                    Margin="0,20,0,0" />
+                        <Border Style="{StaticResource TightCard}">
+                            <VerticalStackLayout Spacing="10">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <Label Grid.Column="0" Text="AGENTS" Style="{StaticResource CardEyebrow}" VerticalOptions="Center" />
+                                    <Label Grid.Column="1" Text="{Binding Agents.Count, StringFormat='{0} live'}"
+                                           Style="{StaticResource CaptionLabel}" TextColor="{StaticResource StudioTextFaint}" />
+                                </Grid>
 
-            <CollectionView ItemsSource="{Binding Agents}"
-                            Margin="0,20,0,0"
-                            HeightRequest="180">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate>
-                        <Frame Padding="10" Margin="5" BorderColor="{StaticResource SecondaryColor}">
-                            <Frame.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding FocusCommand}" />
-                            </Frame.GestureRecognizers>
-                            <Grid ColumnDefinitions="*,Auto">
-                                <VerticalStackLayout Grid.Column="0" Spacing="0">
-                                    <Label Text="{Binding ShortName}" FontAttributes="Bold" />
-                                    <Label Text="{Binding DirectoryName}"
-                                           FontSize="10"
-                                           TextColor="{StaticResource SecondaryColor}" />
+                                <VerticalStackLayout Spacing="6" BindableLayout.ItemsSource="{Binding Agents}">
+                                    <BindableLayout.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Style="{StaticResource InnerRow}" Padding="10,8">
+                                                <Border.GestureRecognizers>
+                                                    <TapGestureRecognizer Command="{Binding FocusCommand}" />
+                                                </Border.GestureRecognizers>
+                                                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
+                                                    <BoxView Grid.Column="0" WidthRequest="9" HeightRequest="9" CornerRadius="5"
+                                                             Color="{Binding StatusColor}" VerticalOptions="Center" />
+                                                    <VerticalStackLayout Grid.Column="1" Spacing="0">
+                                                        <Label Text="{Binding ShortName}" Style="{StaticResource ValueLabel}" LineBreakMode="TailTruncation" />
+                                                        <Label Text="{Binding DirectoryName}" Style="{StaticResource CaptionLabel}"
+                                                               FontSize="11" TextColor="{StaticResource StudioTextFaint}" LineBreakMode="TailTruncation" />
+                                                    </VerticalStackLayout>
+                                                    <Label Grid.Column="2" Text="{Binding Status}" Style="{StaticResource CaptionLabel}"
+                                                           TextColor="{Binding StatusColor}" VerticalOptions="Center" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </BindableLayout.ItemTemplate>
                                 </VerticalStackLayout>
-                                <Label Text="{Binding Status}" TextColor="{Binding StatusColor}" Grid.Column="1" />
-                            </Grid>
-                        </Frame>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
+                            </VerticalStackLayout>
+                        </Border>
 
-        </VerticalStackLayout>
+                        <Border Style="{StaticResource TightCard}">
+                            <VerticalStackLayout Spacing="8">
+                                <Label Text="STATUS" Style="{StaticResource CardEyebrow}" />
+                                <HorizontalStackLayout Spacing="8">
+                                    <BoxView WidthRequest="9" HeightRequest="9" CornerRadius="5"
+                                             Color="{StaticResource StudioGreen}" VerticalOptions="Center" />
+                                    <Label Text="Idle" Style="{StaticResource CaptionLabel}" />
+                                </HorizontalStackLayout>
+                                <HorizontalStackLayout Spacing="8">
+                                    <BoxView WidthRequest="9" HeightRequest="9" CornerRadius="5"
+                                             Color="{StaticResource StudioBlue}" VerticalOptions="Center" />
+                                    <Label Text="Done" Style="{StaticResource CaptionLabel}" />
+                                </HorizontalStackLayout>
+                                <HorizontalStackLayout Spacing="8">
+                                    <BoxView WidthRequest="9" HeightRequest="9" CornerRadius="5"
+                                             Color="{StaticResource StudioAmber}" VerticalOptions="Center" />
+                                    <Label Text="Working" Style="{StaticResource CaptionLabel}" />
+                                </HorizontalStackLayout>
+                                <HorizontalStackLayout Spacing="8">
+                                    <BoxView WidthRequest="9" HeightRequest="9" CornerRadius="5"
+                                             Color="{StaticResource StudioRed}" VerticalOptions="Center" />
+                                    <Label Text="Needs you" Style="{StaticResource CaptionLabel}" />
+                                </HorizontalStackLayout>
+                            </VerticalStackLayout>
+                        </Border>
+                    </VerticalStackLayout>
+                </Grid>
+            </VerticalStackLayout>
         </ScrollView>
 
         <ContentView x:Name="ControlsHost" Grid.Column="1" IsVisible="{Binding IsControlsPage}" />
         <ContentView x:Name="LightingHost" Grid.Column="1" IsVisible="{Binding IsLightingPage}" />
         <ContentView x:Name="HerdrHost" Grid.Column="1" IsVisible="{Binding IsHerdrPage}" />
+
         <ScrollView Grid.Column="1" IsVisible="{Binding IsInspectorPage}">
             <VerticalStackLayout Spacing="20" Padding="30">
                 <Label Text="Inspector" FontSize="26" FontAttributes="Bold" />
