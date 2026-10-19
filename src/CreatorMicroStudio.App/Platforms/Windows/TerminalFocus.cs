@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using AbesWorkLouderCreatorMicroStudio.Windows.Core;
 
 namespace AbesWorkLouderCreatorMicroStudio.Windows.Platforms.Windows;
 
@@ -52,7 +53,7 @@ internal static class TerminalFocus
 
     private static IntPtr FindTerminalWindow()
     {
-        var overrideName = Environment.GetEnvironmentVariable("WL_TERMINAL_PROCESS");
+        var overrideName = Environment.GetEnvironmentVariable(StudioEnvironment.TerminalProcess);
         var names = string.IsNullOrEmpty(overrideName) ? KnownTerminals : new[] { overrideName };
 
         foreach (var name in names)

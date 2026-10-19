@@ -279,7 +279,7 @@ public static class HerdrCommandRunner
     {
         var socketPath = HerdrClient.SocketPath();
         var wsl = OperatingSystem.IsWindows() && HerdrClient.IsWslSocketPath(socketPath);
-        var explicitPath = Environment.GetEnvironmentVariable("WL_HERDR_PATH");
+        var explicitPath = Environment.GetEnvironmentVariable(StudioEnvironment.HerdrPath);
         ProcessStartInfo info;
         if (wsl)
         {

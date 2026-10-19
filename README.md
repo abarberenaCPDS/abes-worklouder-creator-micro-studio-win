@@ -54,9 +54,12 @@ solution's startup project.
 ## No pad to hand
 
 ```powershell
-$env:MICROMANAGER_EMULATOR = "1"
+$env:WL_EMULATE = "1"
 dotnet run --project src\CreatorMicroStudio.Console
 ```
+
+The old `MICROMANAGER_EMULATOR` and `MICROMANAGER_WSL_DISTRO` names were retired in
+0.5.0 and are no longer read.
 
 The emulator stands in for the firmware and reproduces its awkward habits on
 purpose, so a bug it shows you is one you would have met on hardware — see the
@@ -75,7 +78,7 @@ WSL, anything else means a Windows pipe.
 
 ```powershell
 $env:HERDR_SOCKET_PATH = '/home/you/.config/herdr/herdr.sock'
-$env:MICROMANAGER_WSL_DISTRO = 'AlmaLinux-9'   # only if not your default distro
+$env:WL_WSL_DISTRO = 'AlmaLinux-9'   # only if not your default distro
 ```
 
 That needs `nc` with `-U` in the distro (`nmap-ncat`) and an absolute path — `~`

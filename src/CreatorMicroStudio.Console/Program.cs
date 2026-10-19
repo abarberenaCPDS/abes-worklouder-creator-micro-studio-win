@@ -12,11 +12,11 @@ Console.WriteLine();
 // Prefer the real Creator Micro 2 over raw HID; fall back to the in-process
 // emulator when no device is attached (same policy as the MAUI app).
 RpcDevice rpcDevice;
-if (Environment.GetEnvironmentVariable("MICROMANAGER_EMULATOR") is "1" or "true" or "True" or "TRUE")
+if (StudioEnvironment.IsEmulated())
 {
     rpcDevice = new RpcDevice(new PadEmulator());
     await rpcDevice.ConnectAsync();
-    Console.WriteLine($"Connected via {rpcDevice.Transport} (forced by MICROMANAGER_EMULATOR)");
+    Console.WriteLine($"Connected via {rpcDevice.Transport} (forced by {StudioEnvironment.Emulate})");
 }
 else
 {

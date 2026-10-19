@@ -82,7 +82,7 @@ public class HerdrWslTests
 
     /// Live: skips unless Windows is pointed at a socket inside WSL. Run with
     /// HERDR_SOCKET_PATH=/home/<you>/.config/herdr/herdr.sock
-    /// (and MICROMANAGER_WSL_DISTRO=<name> if that is not the default distro).
+    /// (and WL_WSL_DISTRO=<name> if that is not the default distro).
     [Fact]
     public async Task LiveAgentListOverTheWslBridge()
     {

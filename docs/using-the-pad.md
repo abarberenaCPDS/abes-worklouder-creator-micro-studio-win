@@ -279,12 +279,17 @@ rather than owning it, so there is nothing to read it from.
 
 | variable | what it does |
 |---|---|
-| `MICROMANAGER_EMULATOR` | `1` runs against the in-process pad emulator, ignoring hardware |
+| `WL_EMULATE` | `1` runs against the in-process pad emulator, ignoring hardware |
 | `WL_TERMINAL_PROCESS` | the terminal **executable name** to raise on an agent press |
 | `HERDR_SOCKET_PATH` | the Herdr socket: a Windows pipe name, or an absolute path inside WSL (see [Reaching Herdr](#reaching-herdr)) |
-| `MICROMANAGER_WSL_DISTRO` | the distro that holds Herdr, when it is not WSL's default |
+| `WL_WSL_DISTRO` | the distro that holds Herdr, when it is not WSL's default |
 | `WL_HERDR_PATH` | optional full path to the `herdr` CLI used by Herdr command actions |
 | `XDG_CONFIG_HOME` | moves the config directory |
+
+The first five are the Studio's own, sharing the `WL_` prefix with the macOS
+reference. The older `MICROMANAGER_EMULATOR` and `MICROMANAGER_WSL_DISTRO` were
+retired in 0.5.0: scripts that still set them will silently fall back to hardware
+and WSL's default distro, so rename them.
 
 `WL_TERMINAL_PROCESS` matters more than it looks: see below.
 
@@ -309,7 +314,7 @@ so there was never a connection to keep for a second call anyway.
 
 ```powershell
 $env:HERDR_SOCKET_PATH = '/home/you/.config/herdr/herdr.sock'
-$env:MICROMANAGER_WSL_DISTRO = 'AlmaLinux-9'   # only when it is not the default distro
+$env:WL_WSL_DISTRO = 'AlmaLinux-9'   # only when it is not the default distro
 ```
 
 Two things it needs:
@@ -495,14 +500,14 @@ is the one sending a keystroke instead.
 | a key does something unexpected | another client (Work Louder's `Input` app, Codex desktop) is fighting for the pad and rewriting the lighting. Quit it |
 | "Focused the agent, but found no terminal window to raise." | set `WL_TERMINAL_PROCESS` to your terminal's executable name |
 | status shows `Error: …` | the last poll failed, usually Herdr unreachable. Check `HERDR_SOCKET_PATH` |
-| `Error: There is no distribution with the supplied name.` | `MICROMANAGER_WSL_DISTRO` does not match a distro you have — check `wsl --list` |
+| `Error: There is no distribution with the supplied name.` | `WL_WSL_DISTRO` does not match a distro you have — check `wsl --list` |
 | an `nc` complaint about `No such file or directory` | the socket is not where `HERDR_SOCKET_PATH` says: Herdr is not running, or it is in a different distro |
 | `~/…` in `HERDR_SOCKET_PATH` fails | nothing expands it: the WSL route runs no shell, so use the absolute `/home/you/…` |
 | the pad is dark and the window says `disabled` | the bridge is switched off. Toggle it back; the lights return immediately and the keymap is untouched |
 | one key stays dark but its agent is running | the 6 agent slots cover 6 agents; the tray window lists them all, in the same order, and its rows jump to the agent |
 | everything is dark after switching profiles on the pad | see the keymap note above — the app binds the *active* profile's first layer |
 
-No hardware to hand? `MICROMANAGER_EMULATOR=1` runs against an in-process pad
+No hardware to hand? `WL_EMULATE=1` runs against an in-process pad
 emulator that reproduces the firmware's awkward behaviour on purpose, including
 that an unbound key reports nothing and that `{"ok":1}` comes back for any
 lighting payload. It boots on the stock F-key keymap, so the binding step does

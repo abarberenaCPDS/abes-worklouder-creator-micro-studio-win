@@ -25,7 +25,7 @@ public static class HerdrClient
     /// The distro the WSL bridge runs `nc` in. Unset uses WSL's own default.
     public static string? WslDistro()
     {
-        var distro = Environment.GetEnvironmentVariable("MICROMANAGER_WSL_DISTRO");
+        var distro = Environment.GetEnvironmentVariable(StudioEnvironment.WslDistro);
         return string.IsNullOrEmpty(distro) ? null : distro;
     }
 

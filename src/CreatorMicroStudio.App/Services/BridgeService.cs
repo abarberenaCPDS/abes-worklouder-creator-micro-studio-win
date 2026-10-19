@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AbesWorkLouderCreatorMicroStudio.Windows.Platforms.Windows;
+using AbesWorkLouderCreatorMicroStudio.Windows.Core;
 using AbesWorkLouderCreatorMicroStudio.Windows.Core.Config;
 using AbesWorkLouderCreatorMicroStudio.Windows.Core.Emulator;
 using AbesWorkLouderCreatorMicroStudio.Windows.Core.Herdr;
@@ -193,11 +194,10 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
     }
 
     /// <summary>
-    /// Set MICROMANAGER_EMULATOR=1 to run against the in-process pad emulator
-    /// instead of looking for a real Creator Micro 2 (useful without hardware).
+    /// Set WL_EMULATE=1 to run against the in-process pad emulator instead of
+    /// looking for a real Creator Micro 2 (useful without hardware).
     /// </summary>
-    private static bool IsEmulatorForced() =>
-        Environment.GetEnvironmentVariable("MICROMANAGER_EMULATOR") is "1" or "true" or "True" or "TRUE";
+    private static bool IsEmulatorForced() => StudioEnvironment.IsEmulated();
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
