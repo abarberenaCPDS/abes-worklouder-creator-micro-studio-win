@@ -5,6 +5,7 @@ using System.Windows.Input;
 using AbesWorkLouderCreatorMicroStudio.Windows.Core.Config;
 using AbesWorkLouderCreatorMicroStudio.Windows.Core.Pad;
 using AbesWorkLouderCreatorMicroStudio.Windows.Services;
+using Microsoft.Maui.Graphics;
 
 namespace AbesWorkLouderCreatorMicroStudio.Windows.ViewModels;
 
@@ -20,6 +21,13 @@ public sealed class StudioLightingViewModel : INotifyPropertyChanged
     private double _speed;
     private string _underglowMode = nameof(LightingPreferences.UnderglowMode.Status);
     private string _backlightMode = nameof(LightingPreferences.BacklightMode.Off);
+    private readonly LightingLookViewModel _noKeyLook = new();
+    private LightingKeyLookViewModel? _selectedKey;
+    private IReadOnlyDictionary<int, Color> _padColors = new Dictionary<int, Color>();
+    private IReadOnlyList<int> _selectionIds = Array.Empty<int>();
+
+    /// <summary>The unlit keycap shade shown inside the pad map where a key has no override.</summary>
+    private static readonly Color DimKeycap = Color.FromArgb("#0D131B");
 
     public StudioLightingViewModel(IBridgeService bridge)
     {
@@ -39,6 +47,8 @@ public sealed class StudioLightingViewModel : INotifyPropertyChanged
         RevertCommand = new Command(Revert);
         SaveNowCommand = new Command(SaveNow);
         RestoreDefaultsCommand = new Command(RestoreDefaults);
+        SelectKeyCommand = new Command<int>(SelectKey);
+        UseColorCommand = new Command<string>(hex => SelectedLook.ColorHex = hex);
         Load(_bridge.Lighting);
     }
 
@@ -52,6 +62,29 @@ public sealed class StudioLightingViewModel : INotifyPropertyChanged
     public ICommand RevertCommand { get; }
     public ICommand SaveNowCommand { get; }
     public ICommand RestoreDefaultsCommand { get; }
+    public Command<int> SelectKeyCommand { get; }
+    public Command<string> UseColorCommand { get; }
+
+    /// <summary>The key currently open in the per-key editor, as pad-map selection ids.</summary>
+    public IReadOnlyList<int> SelectionIds => _selectionIds;
+
+    public int? SelectedKeyId => _selectedKey?.KeyId;
+
+    public LightingKeyLookViewModel? SelectedKey => _selectedKey;
+
+    public bool HasSelectedKey => _selectedKey is not null;
+
+    public bool HasNoSelectedKey => _selectedKey is null;
+
+    /// <summary>A non-null proxy for the editor: the selected key's look, or a harmless default.</summary>
+    public LightingLookViewModel SelectedLook => _selectedKey?.Look ?? _noKeyLook;
+
+    /// <summary>Lit colours for the pad map: the override colour, or a dim keycap otherwise.</summary>
+    public IReadOnlyDictionary<int, Color> PadColors => _padColors;
+
+    /// <summary>Preset hex colours offered as one-tap chips in the key editor.</summary>
+    public IReadOnlyList<string> ColorChips { get; } =
+        new[] { "#FF2D2D", "#FFA000", "#00B0FF", "#00C853", "#7C4DFF", "#FFFFFF" };
 
     public double Brightness
     {
@@ -121,6 +154,7 @@ public sealed class StudioLightingViewModel : INotifyPropertyChanged
     private void Changed()
     {
         if (_updating) return;
+        RefreshPadColors();
         var draft = Snapshot();
         _updating = true;
         try { _bridge.PreviewLightingPreferences(draft); }
@@ -242,7 +276,37 @@ public sealed class StudioLightingViewModel : INotifyPropertyChanged
             }
         }
         finally { _updating = false; }
+        RefreshPadColors();
     }
+
+    private void SelectKey(int keyId)
+    {
+        var key = KeyLooks.FirstOrDefault(candidate => candidate.KeyId == keyId);
+        if (ReferenceEquals(key, _selectedKey)) return;
+
+        _selectedKey = key;
+        _selectionIds = key is null ? Array.Empty<int>() : new[] { key.KeyId };
+        OnPropertyChanged(nameof(SelectedKey));
+        OnPropertyChanged(nameof(SelectedKeyId));
+        OnPropertyChanged(nameof(HasSelectedKey));
+        OnPropertyChanged(nameof(HasNoSelectedKey));
+        OnPropertyChanged(nameof(SelectedLook));
+        OnPropertyChanged(nameof(SelectionIds));
+        RefreshPadColors();
+    }
+
+    private void RefreshPadColors()
+    {
+        var colors = new Dictionary<int, Color>(KeyLooks.Count);
+        foreach (var key in KeyLooks)
+            colors[key.KeyId] = key.HasOverride ? ColorFromHex(key.Look.ColorHex) : DimKeycap;
+
+        _padColors = colors;
+        OnPropertyChanged(nameof(PadColors));
+    }
+
+    private static Color ColorFromHex(string hex) =>
+        PackedRgb.FromHex(hex) is { } packed ? Color.FromArgb(PackedRgb.HexString(packed)) : DimKeycap;
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

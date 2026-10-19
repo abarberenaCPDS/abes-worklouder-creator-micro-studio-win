@@ -1,78 +1,101 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-              x:Class="AbesWorkLouderCreatorMicroStudio.Windows.Views.HerdrPage">
+             x:Class="AbesWorkLouderCreatorMicroStudio.Windows.Views.HerdrPage">
     <ScrollView>
         <VerticalStackLayout Padding="24" Spacing="18">
-            <VerticalStackLayout Spacing="4">
-                <Label Text="Herdr" FontSize="28" FontAttributes="Bold" />
+
+            <!-- Header -->
+            <VerticalStackLayout Spacing="6">
+                <Label Text="Herdr" Style="{StaticResource PageTitle}" />
                 <Label Text="Live agent order, pad slot mapping, and host-side input actions. This page does not write the device keymap."
-                       TextColor="#AEB8C7" />
+                       Style="{StaticResource PageSubtitle}" />
             </VerticalStackLayout>
 
-            <Border Padding="16" Stroke="#344155" StrokeShape="RoundRectangle 10">
+            <!-- Connection context -->
+            <Border Style="{StaticResource Card}">
                 <VerticalStackLayout Spacing="10">
-                    <Label Text="Connection context" FontSize="18" FontAttributes="Bold" />
-                    <Label Text="Transport" FontAttributes="Bold" />
-                    <Label Text="{Binding TransportContext}" LineBreakMode="CharacterWrap" />
-                    <Label Text="Socket path" FontAttributes="Bold" />
-                    <Label Text="{Binding SocketPath}" LineBreakMode="CharacterWrap" />
-                    <Label Text="{Binding MetadataStatus}" FontSize="12" TextColor="#D6AD55" />
+                    <Label Text="CONNECTION CONTEXT" Style="{StaticResource CardEyebrow}" />
+                    <Label Text="Transport" Style="{StaticResource FieldLabel}" />
+                    <Label Text="{Binding TransportContext}" Style="{StaticResource ValueLabel}"
+                           LineBreakMode="CharacterWrap" />
+                    <Label Text="Socket path" Style="{StaticResource FieldLabel}" />
+                    <Label Text="{Binding SocketPath}" Style="{StaticResource ValueLabel}"
+                           LineBreakMode="CharacterWrap" />
+                    <Label Text="{Binding MetadataStatus}" Style="{StaticResource StatusWarnLabel}" />
                 </VerticalStackLayout>
             </Border>
 
-            <Border Padding="16" Stroke="#344155" StrokeShape="RoundRectangle 10">
-                <VerticalStackLayout Spacing="10">
-                    <Label Text="Agents and pad slots" FontSize="18" FontAttributes="Bold" />
+            <!-- Agents and pad slots -->
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="AGENTS AND PAD SLOTS" Style="{StaticResource CardEyebrow}" />
                     <Label Text="Agents stay in Herdr server order. The first six map to the pad's six agent slots; click a row to request focus in Herdr."
-                           FontSize="12" TextColor="#AEB8C7" />
-                    <Label Text="{Binding AgentStatus}" FontSize="12" TextColor="#AEB8C7" />
+                           Style="{StaticResource CaptionLabel}" />
+                    <Label Text="{Binding AgentStatus}" Style="{StaticResource CaptionLabel}" />
+
                     <VerticalStackLayout Spacing="8" BindableLayout.ItemsSource="{Binding Agents}">
                         <BindableLayout.EmptyView>
-                            <Label Text="No agent snapshot yet." TextColor="#AEB8C7" />
+                            <Label Text="No agent snapshot yet." Style="{StaticResource CaptionLabel}" />
                         </BindableLayout.EmptyView>
                         <BindableLayout.ItemTemplate>
                             <DataTemplate>
-                                <Border Padding="12" Stroke="#344155" StrokeShape="RoundRectangle 8">
-                                    <VerticalStackLayout Spacing="4">
-                                        <Button Text="{Binding Name}" Command="{Binding FocusCommand}"
-                                                CommandParameter="{Binding .}" HorizontalOptions="Fill"
-                                                FontAttributes="Bold" />
-                                        <Label Text="{Binding FocusIndicator}" TextColor="#73B8FF" FontSize="12"
-                                               IsVisible="{Binding Agent.Focused}" />
-                                        <Label Text="{Binding State}" FontSize="12" TextColor="#AEB8C7" />
-                                        <Label Text="{Binding Location}" FontSize="12" LineBreakMode="CharacterWrap" />
-                                        <Label Text="{Binding SlotSummary}" FontAttributes="Bold" />
-                                        <Label Text="{Binding SlotAction}" FontSize="12" TextColor="#AEB8C7"
-                                               IsVisible="{Binding HasSlot}" />
-                                        <Label Text="{Binding InputAvailability}" FontSize="11" TextColor="#D6AD55"
-                                               IsVisible="{Binding IsInputUnavailable}" />
-                                    </VerticalStackLayout>
+                                <Border Style="{StaticResource InnerRow}">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto"
+                                          ColumnSpacing="12" RowSpacing="6">
+                                        <BoxView WidthRequest="12" HeightRequest="12" CornerRadius="6"
+                                                 Color="{Binding StatusColor}" VerticalOptions="Start"
+                                                 Margin="0,4,0,0" />
+                                        <Label Grid.Column="1" Text="{Binding Name}"
+                                               Style="{StaticResource SectionTitle}" />
+                                        <Button Grid.Column="2" Text="Focus"
+                                                Command="{Binding FocusCommand}"
+                                                CommandParameter="{Binding .}"
+                                                Style="{StaticResource SecondaryButton}"
+                                                VerticalOptions="Center" />
+                                        <VerticalStackLayout Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Spacing="3">
+                                            <Label Text="{Binding State}" Style="{StaticResource CaptionLabel}" />
+                                            <Label Text="{Binding Location}" Style="{StaticResource CaptionLabel}"
+                                                   LineBreakMode="CharacterWrap" />
+                                            <Label Text="{Binding SlotSummary}" Style="{StaticResource ValueLabel}" />
+                                            <Label Text="{Binding SlotAction}" Style="{StaticResource CaptionLabel}"
+                                                   IsVisible="{Binding HasSlot}" />
+                                            <Label Text="{Binding InputAvailability}" Style="{StaticResource StatusWarnLabel}"
+                                                   IsVisible="{Binding IsInputUnavailable}" />
+                                            <Label Text="{Binding FocusIndicator}" Style="{StaticResource AccentLabel}"
+                                                   IsVisible="{Binding Agent.Focused}" />
+                                        </VerticalStackLayout>
+                                    </Grid>
                                 </Border>
                             </DataTemplate>
                         </BindableLayout.ItemTemplate>
                     </VerticalStackLayout>
-                    <Label Text="{Binding FocusStatus}" FontSize="12" TextColor="#AEB8C7" />
+
+                    <Label Text="{Binding FocusStatus}" Style="{StaticResource CaptionLabel}" />
                 </VerticalStackLayout>
             </Border>
 
-            <Border Padding="16" Stroke="#344155" StrokeShape="RoundRectangle 10">
-                <VerticalStackLayout Spacing="10">
-                    <Label Text="Physical input mappings" FontSize="18" FontAttributes="Bold" />
+            <!-- Physical input mappings -->
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="PHYSICAL INPUT MAPPINGS" Style="{StaticResource CardEyebrow}" />
                     <Label Text="These are host-side actions from the current bindings. Availability is reported for the active device profile; unavailable inputs may not emit events."
-                           FontSize="12" TextColor="#AEB8C7" />
-                    <Label Text="{Binding InputStatus}" FontSize="12" TextColor="#D6AD55" />
+                           Style="{StaticResource CaptionLabel}" />
+                    <Label Text="{Binding InputStatus}" Style="{StaticResource StatusWarnLabel}" />
+
                     <VerticalStackLayout Spacing="8" BindableLayout.ItemsSource="{Binding Inputs}">
                         <BindableLayout.ItemTemplate>
                             <DataTemplate>
-                                <Border Padding="10" Stroke="#344155" StrokeShape="RoundRectangle 8">
-                                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="3">
-                                        <Label Text="{Binding Name}" FontAttributes="Bold" />
+                                <Border Style="{StaticResource InnerRow}">
+                                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto"
+                                          ColumnSpacing="8" RowSpacing="3">
+                                        <Label Text="{Binding Name}" Style="{StaticResource ValueLabel}"
+                                               FontAttributes="Bold" />
                                         <Label Grid.Column="1" Grid.RowSpan="3" Text="{Binding Availability}"
-                                               FontSize="11" TextColor="#D6AD55" VerticalOptions="Center"
+                                               Style="{StaticResource StatusWarnLabel}" VerticalOptions="Center"
                                                IsVisible="{Binding IsUnavailable}" />
-                                        <Label Grid.Row="1" Text="{Binding Descriptor}" FontSize="11" TextColor="#AEB8C7" />
-                                        <Label Grid.Row="2" Text="{Binding Action}" FontSize="12" />
+                                        <Label Grid.Row="1" Text="{Binding Descriptor}" Style="{StaticResource CaptionLabel}" />
+                                        <Label Grid.Row="2" Text="{Binding Action}" Style="{StaticResource ValueLabel}" />
                                     </Grid>
                                 </Border>
                             </DataTemplate>
@@ -80,6 +103,7 @@
                     </VerticalStackLayout>
                 </VerticalStackLayout>
             </Border>
+
         </VerticalStackLayout>
     </ScrollView>
 </ContentView>

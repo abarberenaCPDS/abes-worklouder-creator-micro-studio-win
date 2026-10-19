@@ -1,3 +1,4 @@
+using AbesWorkLouderCreatorMicroStudio.Windows.Controls;
 using AbesWorkLouderCreatorMicroStudio.Windows.Services;
 using AbesWorkLouderCreatorMicroStudio.Windows.ViewModels;
 
@@ -28,4 +29,7 @@ public partial class StudioLightingPage : ContentView
         _attached = false;
         _viewModel.Detach();
     }
+
+    private void OnPadInputTapped(object? sender, PadMapInputEventArgs e) =>
+        _viewModel.SelectKeyCommand.Execute(e.InputId);
 }

@@ -7,6 +7,7 @@ using AbesWorkLouderCreatorMicroStudio.Windows.Core.Herdr;
 using AbesWorkLouderCreatorMicroStudio.Windows.Core.Pad;
 using AbesWorkLouderCreatorMicroStudio.Windows.Services;
 using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Graphics;
 
 namespace AbesWorkLouderCreatorMicroStudio.Windows.ViewModels;
 
@@ -220,6 +221,9 @@ public sealed class HerdrAgentViewModel
     public string InputAvailability { get; }
     public bool IsInputUnavailable { get; }
     public bool HasSlot => SlotAction.Length > 0;
+
+    /// <summary>The agent's state colour, taken from the same table the pad uses.</summary>
+    public Color StatusColor => Color.FromArgb(PackedRgb.HexString(new BridgeConfig().ColorFor(Agent.AgentStatus)));
 }
 
 public sealed class HerdrInputViewModel(PadInput input, string action, bool customized, bool isAvailable)
