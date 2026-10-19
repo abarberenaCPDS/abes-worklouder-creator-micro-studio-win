@@ -46,14 +46,18 @@ remote rename is an external action and is not performed by this worktree.
   leaving. F5/hardware validation remains.
 - [x] Phase 5 implementation — Herdr status/mapping page and usage/config docs
   are in place. Remaining: F5 visual pass, real pad/Herdr action verification,
-  and final acceptance checklist. Current SemVer is 0.4.1; the GitHub remote
-  rename remains external to this worktree.
+  and final acceptance checklist. Current SemVer is 0.5.0.
+- [x] Phase 6 (0.5.0) — a Studio theme and reusable pad map, plus a cosmetic pass
+  over the shell/dashboard, Controls, Lighting and Herdr pages. `MICROMANAGER_*`
+  environment variables were replaced by `WL_*`. The repository was reduced to the
+  Windows app: the macOS Swift reference tree was removed and the former
+  `windows/` subtree became the repository root.
 
 ### Verification so far
 
 - `dotnet build AbesWorkLouderCreatorMicroStudio.Windows.sln` succeeds (existing
   nullable/obsolete warnings remain).
-- `dotnet test tests\CreatorMicroStudio.Core.Tests\CreatorMicroStudio.Core.Tests.csproj --filter "FullyQualifiedName!~HerdrWslTests"` passes: 159 tests.
+- `dotnet test tests\CreatorMicroStudio.Core.Tests\CreatorMicroStudio.Core.Tests.csproj --filter "FullyQualifiedName!~HerdrWslTests"` passes: 160 tests.
 - Setting `$env:WL_EMULATE = "1"` and running
   `dotnet run --no-build --project src\CreatorMicroStudio.Console` passes the
   emulator HID/keymap smoke test.
@@ -99,6 +103,10 @@ Goal: an MVP tray app for Windows 11 that does what the macOS menu-bar app does 
 - Windows has no Input Monitoring permission gate for HID vendor collections — the app's biggest macOS papercut (signing/ad-hoc hash churn) disappears.
 
 ## What ports cleanly (put in `src/CreatorMicroStudio.Core`, target net10.0)
+
+The Swift sources named below were the port's reference; they were removed from
+the repository in 0.5.0, so these rows are a historical map of where each Core
+file came from.
 
 | Source | Destination | Notes |
 |---|---|---|
@@ -197,7 +205,7 @@ device.status: {"version":"0.6.3","profile_index":1,"layer_index":1,"battery":99
 USB. macOS arrives at the same place by matching on vendor alone, for the same
 reason: over Bluetooth the pad is a *single* HID device whose primary usage is
 keyboard, with the vendor collection alongside it in its usage pairs
-(`Sources/WLKit/WLDevice.swift:143-161`, `docs/hacking.md:78-85`).
+(`docs/hacking.md:78-85`).
 
 So there is no Bluetooth feature to build. What was left was not support but
 **recovery**, and both halves of it have since landed:

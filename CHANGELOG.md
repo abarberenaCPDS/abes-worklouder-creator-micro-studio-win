@@ -8,6 +8,26 @@ console harness, so there is nothing else to keep in step.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-19
+
+### Added
+
+- A Studio dark theme and a reusable physical pad map (`PadMapView`) drawn from
+  the device's own matrix, now used by the dashboard, Controls and Lighting pages.
+
+### Changed
+
+- Restyled the shell, dashboard, Controls, Lighting and Herdr pages to the macOS
+  Studio's card-based look: sidebar rail, connection/status pills, grouped input
+  cards, a per-key lighting editor, and a live pad map that shows agent colours,
+  bindings and selection.
+- `MICROMANAGER_EMULATOR` and `MICROMANAGER_WSL_DISTRO` were replaced by
+  `WL_EMULATE` and `WL_WSL_DISTRO`. The old names are no longer read, so rename
+  any scripts that set them. The names now live in `StudioEnvironment` in Core.
+- The repository contains only the Windows app: the macOS Swift reference
+  implementation and its docs were removed, and the former `windows/` subtree is
+  the repository root, so build and test commands drop the `windows\` prefix.
+
 ## [0.4.1] - 2026-10-19
 
 ### Fixed

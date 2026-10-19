@@ -62,8 +62,8 @@ The old `MICROMANAGER_EMULATOR` and `MICROMANAGER_WSL_DISTRO` names were retired
 0.5.0 and are no longer read.
 
 The emulator stands in for the firmware and reproduces its awkward habits on
-purpose, so a bug it shows you is one you would have met on hardware — see the
-[top-level README](../README.md#no-pad-to-hand).
+purpose, so a bug it shows you is one you would have met on hardware — see
+[Using the pad](docs/using-the-pad.md).
 
 ## Connecting to Herdr
 
@@ -176,7 +176,7 @@ dotnet build AbesWorkLouderCreatorMicroStudio.Windows.sln -p:Version=0.4.2-rc.1
 | `AbesWorkLouderCreatorMicroStudio.Windows.sln` | branded Windows solution |
 | `PLAN.md` | the port's plan and current state |
 | `docs/using-the-pad.md` | using the hardware: key map, colours, config, troubleshooting |
+| `docs/hacking.md` | the raw-HID protocol the port speaks |
 
-The macOS side of the repo — `Sources/WLKit` in particular — is the reference
-the port is written against; [`docs/hacking.md`](../docs/hacking.md) documents
-the device protocol itself.
+[`docs/hacking.md`](docs/hacking.md) documents the device protocol itself — the
+raw-HID framing, the double-encoded keymap file and the vendor lighting API.

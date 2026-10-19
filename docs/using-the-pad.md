@@ -3,7 +3,7 @@
 The practical guide: what each key does, where the colours come from, how the pad
 gets bound to the app, and what you can change. For the protocol underneath —
 raw-HID JSON-RPC, the double-encoded keymap file, the vendor lighting API — see
-[`docs/hacking.md`](../../docs/hacking.md). For what is built and what is not,
+[`docs/hacking.md`](hacking.md). For what is built and what is not,
 see [`../PLAN.md`](../PLAN.md).
 
 ## Before you start
