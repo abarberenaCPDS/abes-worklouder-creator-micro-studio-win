@@ -3,9 +3,11 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using AbesWorkLouderCreatorMicroStudio.Windows.Core.Config;
+using AbesWorkLouderCreatorMicroStudio.Windows.Core.Herdr;
 using AbesWorkLouderCreatorMicroStudio.Windows.Core.Pad;
 using AbesWorkLouderCreatorMicroStudio.Windows.Services;
 using Microsoft.Maui.ApplicationModel;
+using Microsoft.Maui.Graphics;
 
 namespace AbesWorkLouderCreatorMicroStudio.Windows.ViewModels;
 
@@ -21,6 +23,8 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
     private string _mediaKey = nameof(MediaKey.PlayPause);
     private string _status = "Select an input to inspect or edit its action.";
     private bool _isBusy;
+    private IReadOnlyDictionary<int, Color> _keyColors = new Dictionary<int, Color>();
+    private IReadOnlyList<string> _agentNames = Array.Empty<string>();
 
     public ControlsViewModel(IBridgeService bridge)
     {
@@ -72,6 +76,9 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    /// <summary>Raised with the input id after <c>Test</c> successfully sends it, so a view can flash it.</summary>
+    public event Action<int>? Tested;
+
     public ObservableCollection<ControlsInputGroupViewModel> Groups { get; } = new();
     public IReadOnlyList<IReadOnlyList<ControlsInputViewModel>> PhysicalRows { get; }
     public IReadOnlyList<ControlsInputViewModel> DialInputs { get; }
@@ -106,6 +113,34 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
     };
     public string CustomizedSummary =>
         $"{Groups.SelectMany(group => group.Items).Count(input => input.Customized)} customized";
+
+    /// <summary>The selected input ids, as the pad map's <c>Selection</c> binding.</summary>
+    public IReadOnlyList<int> SelectionIds => SelectedInputs.Select(input => input.Id).ToArray();
+
+    /// <summary>The current host-side bindings, so the pad map can show its actions.</summary>
+    public KeyBindings Bindings => _bridge.Bindings;
+
+    /// <summary>Live lit colours by input id, rebuilt from each key-state push.</summary>
+    public IReadOnlyDictionary<int, Color> KeyColors => _keyColors;
+
+    /// <summary>Agent display names in slot order, for the pad map's agent labels.</summary>
+    public IReadOnlyList<string> AgentNames => _agentNames;
+
+    public string SelectedTitle => SelectedCount switch
+    {
+        0 => "No input selected",
+        1 => $"{SelectedInputs[0].Name} (AG{SelectedInputs[0].Id})",
+        _ => $"{SelectedCount} inputs selected",
+    };
+
+    public string SelectedSubtitle => SelectedCount switch
+    {
+        0 => "Select a physical input to inspect or edit its host-side action.",
+        1 => SelectedInputs[0].Customized
+            ? "Showing a customized host-side override."
+            : "Showing the default host-side action.",
+        _ => "Bulk edits apply to every selected input.",
+    };
 
     public string Status
     {
@@ -207,6 +242,8 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
     {
         _bridge.OnBindingsChanged += BindingsChanged;
         _bridge.OnInputCapabilitiesChanged += CapabilitiesChanged;
+        _bridge.OnKeyStateChanged += KeyStateChanged;
+        _bridge.OnAgentStateChanged += AgentStateChanged;
         RefreshInputSummaries();
     }
 
@@ -214,6 +251,15 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
     {
         _bridge.OnBindingsChanged -= BindingsChanged;
         _bridge.OnInputCapabilitiesChanged -= CapabilitiesChanged;
+        _bridge.OnKeyStateChanged -= KeyStateChanged;
+        _bridge.OnAgentStateChanged -= AgentStateChanged;
+    }
+
+    /// <summary>Toggles exactly one input, for a tap on the pad map.</summary>
+    public void ToggleFromPad(int id)
+    {
+        var input = Groups.SelectMany(group => group.Items).FirstOrDefault(item => item.Id == id);
+        if (input is not null) ToggleInputSelection(input);
     }
 
     private void ToggleInputSelection(ControlsInputViewModel input)
@@ -236,6 +282,9 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(HasSelection));
         OnPropertyChanged(nameof(HasOneSelection));
         OnPropertyChanged(nameof(SelectionSummary));
+        OnPropertyChanged(nameof(SelectionIds));
+        OnPropertyChanged(nameof(SelectedTitle));
+        OnPropertyChanged(nameof(SelectedSubtitle));
         if (SelectedCount == 1) LoadAction(SelectedInputs[0].Id);
         RefreshCommands();
     }
@@ -328,6 +377,7 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
             var draft = BuildAction(kind);
             await _bridge.TestActionAsync(input.Id, draft);
             Status = $"Tested {input.Name}: {draft.Title}.";
+            Tested?.Invoke(input.Id);
         }
         catch (Exception ex) { Status = $"Test failed: {ex.Message}"; }
         finally { IsBusy = false; }
@@ -337,8 +387,33 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
+            OnPropertyChanged(nameof(Bindings));
             RefreshInputSummaries();
+            OnPropertyChanged(nameof(SelectedSubtitle));
             if (HasOneSelection) LoadAction(SelectedInputs[0].Id);
+        });
+    }
+
+    private void KeyStateChanged(IReadOnlyDictionary<int, int> lit)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            // A fresh dictionary, never the pushed one: the pad map binds to it
+            // and only redraws when the reference changes.
+            var colors = new Dictionary<int, Color>();
+            foreach (var (id, packed) in lit)
+                colors[id] = Color.FromArgb(PackedRgb.HexString(packed));
+            _keyColors = colors;
+            OnPropertyChanged(nameof(KeyColors));
+        });
+    }
+
+    private void AgentStateChanged(List<HerdrAgent> agents)
+    {
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            _agentNames = agents.Select(agent => agent.ShortName).ToArray();
+            OnPropertyChanged(nameof(AgentNames));
         });
     }
 
