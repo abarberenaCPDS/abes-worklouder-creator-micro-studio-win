@@ -12,16 +12,10 @@ public partial class App : Application
     {
         InitializeComponent();
 
-        Resources = new ResourceDictionary
-        {
-            { "PrimaryColor", Color.FromArgb("#007ACC") },
-            { "SecondaryColor", Color.FromArgb("#6C757D") },
-            { "BlockedColor", Color.FromArgb("#FF2D2D") },
-            { "WorkingColor", Color.FromArgb("#FFA000") },
-            { "DoneColor", Color.FromArgb("#00B0FF") },
-            { "IdleColor", Color.FromArgb("#00C853") },
-            { "UnknownColor", Color.FromArgb("#00C853") },
-        };
+        // The Studio's palette lives in Resources/Styles/StudioTheme.xaml, merged
+        // by App.xaml. Do not replace Resources here: doing so would drop the
+        // theme's styles and the merged dictionary with it.
+        UserAppTheme = AppTheme.Dark;
 
         MainPage = new MainPage(bridgeService, viewModel);
 

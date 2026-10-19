@@ -60,4 +60,22 @@ public class PadGeometryTests
         Assert.False(Pad.Input(0)?.CapabilityDependent);
         Assert.Equal(Enumerable.Range(0, 20), Pad.ConfigurableInputIds);
     }
+
+    [Fact]
+    public void PhysicalRowsPlaceControlsAndCaseMark()
+    {
+        Assert.Equal(4, Pad.PhysicalDisplayRows.Count);
+
+        // The dial and joystick flank the reversed top row: key 1 is left of key 0.
+        Assert.Equal(
+            new[] { PadDisplayCellKind.Dial, PadDisplayCellKind.Key, PadDisplayCellKind.Key, PadDisplayCellKind.Joystick },
+            Pad.PhysicalDisplayRows[0].Select(cell => cell.Kind));
+        Assert.Equal(new[] { 1, 0 }, Pad.PhysicalDisplayRows[0].Where(cell => cell.IsKey).Select(cell => cell.InputId));
+
+        // The bottom-left slot is the non-key case mark, not a key.
+        Assert.Equal(PadDisplayCellKind.CaseMark, Pad.PhysicalDisplayRows[3][0].Kind);
+
+        Assert.Equal(13, Pad.PhysicalDisplayKeyIds.Count);
+        Assert.Equal(Enumerable.Range(0, 13), Pad.PhysicalDisplayKeyIds.OrderBy(id => id));
+    }
 }

@@ -104,7 +104,7 @@ public static class Oai
 
 /// The pad's physical key rows, matching the firmware's [2, 4, 4, 3] matrix.
 /// Key index runs row-major from 0, so the six agent keys are 0...5.
-public static class Pad
+public static partial class Pad
 {
     public static readonly List<List<int>> Rows = new()
     {

@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <!--
+        Abe's Studio theme. A dark, card-based surface that mirrors the macOS
+        Creator Micro Studio's look: a sidebar rail, material cards with rounded
+        corners, large titles, muted subtitles and monospaced section eyebrows.
+        Colours are duplicated under their legacy keys so older markup keeps
+        resolving.
+    -->
+
+    <!-- Legacy keys (kept so existing StaticResource lookups keep working). -->
+    <Color x:Key="PrimaryColor">#F5D77A</Color>
+    <Color x:Key="SecondaryColor">#9AA9BD</Color>
+    <Color x:Key="BlockedColor">#FF5C5C</Color>
+    <Color x:Key="WorkingColor">#FFB020</Color>
+    <Color x:Key="DoneColor">#4FA3FF</Color>
+    <Color x:Key="IdleColor">#3DDC84</Color>
+    <Color x:Key="UnknownColor">#8B98AA</Color>
+    <Color x:Key="SurfaceColor">#161F2E</Color>
+    <Color x:Key="OnSurfaceColor">#E8EDF5</Color>
+
+    <!-- Studio palette -->
+    <Color x:Key="StudioBackground">#0C121C</Color>
+    <Color x:Key="StudioSidebar">#101827</Color>
+    <Color x:Key="StudioSurface">#161F2E</Color>
+    <Color x:Key="StudioSurfaceAlt">#1D2839</Color>
+    <Color x:Key="StudioSurfaceRaised">#243247</Color>
+    <Color x:Key="StudioBorder">#28374E</Color>
+    <Color x:Key="StudioBorderStrong">#3A4F6E</Color>
+    <Color x:Key="StudioText">#E8EDF5</Color>
+    <Color x:Key="StudioTextMuted">#9AA9BD</Color>
+    <Color x:Key="StudioTextFaint">#6C7C93</Color>
+    <Color x:Key="StudioAccent">#F5D77A</Color>
+    <Color x:Key="StudioAccentInk">#1A1508</Color>
+    <Color x:Key="StudioAccentSoft">#2A2A1C</Color>
+    <Color x:Key="StudioSelection">#33F5D77A</Color>
+    <Color x:Key="StudioBlue">#73B8FF</Color>
+    <Color x:Key="StudioGreen">#3DDC84</Color>
+    <Color x:Key="StudioAmber">#FFB020</Color>
+    <Color x:Key="StudioRed">#FF5C5C</Color>
+    <Color x:Key="StudioPanelBlack">#0A0F16</Color>
+    <Color x:Key="StudioKeycap">#1B2637</Color>
+    <Color x:Key="StudioKeycapDark">#141B27</Color>
+
+    <!-- Typography -->
+    <Style x:Key="PageTitle" TargetType="Label">
+        <Setter Property="FontSize" Value="30" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextColor" Value="{StaticResource StudioText}" />
+    </Style>
+
+    <Style x:Key="PageSubtitle" TargetType="Label">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="TextColor" Value="{StaticResource StudioTextMuted}" />
+    </Style>
+
+    <Style x:Key="SectionTitle" TargetType="Label">
+        <Setter Property="FontSize" Value="18" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextColor" Value="{StaticResource StudioText}" />
+    </Style>
+
+    <Style x:Key="CardEyebrow" TargetType="Label">
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="CharacterSpacing" Value="1.5" />
+        <Setter Property="TextColor" Value="{StaticResource StudioTextFaint}" />
+        <Setter Property="FontFamily" Value="Consolas" />
+    </Style>
+
+    <Style x:Key="CaptionLabel" TargetType="Label">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="TextColor" Value="{StaticResource StudioTextMuted}" />
+    </Style>
+
+    <Style x:Key="FieldLabel" TargetType="Label">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="TextColor" Value="{StaticResource StudioTextMuted}" />
+        <Setter Property="VerticalOptions" Value="Center" />
+    </Style>
+
+    <Style x:Key="ValueLabel" TargetType="Label">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="TextColor" Value="{StaticResource StudioText}" />
+        <Setter Property="VerticalOptions" Value="Center" />
+    </Style>
+
+    <Style x:Key="AccentLabel" TargetType="Label">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextColor" Value="{StaticResource StudioBlue}" />
+    </Style>
+
+    <Style x:Key="StatusGoodLabel" TargetType="Label">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="TextColor" Value="{StaticResource StudioGreen}" />
+    </Style>
+
+    <Style x:Key="StatusWarnLabel" TargetType="Label">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="TextColor" Value="{StaticResource StudioAmber}" />
+    </Style>
+
+    <Style x:Key="StatusBadLabel" TargetType="Label">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="TextColor" Value="{StaticResource StudioRed}" />
+    </Style>
+
+    <!-- Surfaces -->
+    <Style x:Key="Card" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="{StaticResource StudioSurface}" />
+        <Setter Property="Stroke" Value="{StaticResource StudioBorder}" />
+        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 16" />
+        <Setter Property="Padding" Value="18" />
+    </Style>
+
+    <Style x:Key="TightCard" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="{StaticResource StudioSurface}" />
+        <Setter Property="Stroke" Value="{StaticResource StudioBorder}" />
+        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 12" />
+        <Setter Property="Padding" Value="14" />
+    </Style>
+
+    <Style x:Key="InnerRow" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="{StaticResource StudioSurfaceAlt}" />
+        <Setter Property="Stroke" Value="{StaticResource StudioBorder}" />
+        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 10" />
+        <Setter Property="Padding" Value="12" />
+    </Style>
+
+    <Style x:Key="NavItem" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="Transparent" />
+        <Setter Property="Stroke" Value="Transparent" />
+        <Setter Property="StrokeThickness" Value="1" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 9" />
+        <Setter Property="Padding" Value="10,0" />
+        <Setter Property="HeightRequest" Value="40" />
+    </Style>
+
+    <!-- Buttons -->
+    <Style x:Key="PrimaryButton" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="{StaticResource StudioAccent}" />
+        <Setter Property="TextColor" Value="{StaticResource StudioAccentInk}" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="16,0" />
+        <Setter Property="MinimumHeightRequest" Value="36" />
+    </Style>
+
+    <Style x:Key="SecondaryButton" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="{StaticResource StudioSurfaceAlt}" />
+        <Setter Property="TextColor" Value="{StaticResource StudioText}" />
+        <Setter Property="BorderColor" Value="{StaticResource StudioBorderStrong}" />
+        <Setter Property="BorderWidth" Value="1" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="14,0" />
+        <Setter Property="MinimumHeightRequest" Value="34" />
+    </Style>
+
+    <Style x:Key="GhostButton" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="Transparent" />
+        <Setter Property="TextColor" Value="{StaticResource StudioTextMuted}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="12,0" />
+        <Setter Property="MinimumHeightRequest" Value="34" />
+    </Style>
+
+    <Style x:Key="DangerButton" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="Transparent" />
+        <Setter Property="TextColor" Value="{StaticResource StudioRed}" />
+        <Setter Property="BorderColor" Value="{StaticResource StudioRed}" />
+        <Setter Property="BorderWidth" Value="1" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="14,0" />
+        <Setter Property="MinimumHeightRequest" Value="34" />
+    </Style>
+
+    <Style x:Key="ChipButton" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="{StaticResource StudioSurfaceAlt}" />
+        <Setter Property="TextColor" Value="{StaticResource StudioTextMuted}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="CornerRadius" Value="13" />
+        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="MinimumHeightRequest" Value="28" />
+    </Style>
+
+    <!-- Form controls -->
+    <Style x:Key="StudioEntry" TargetType="Entry">
+        <Setter Property="BackgroundColor" Value="{StaticResource StudioSurfaceAlt}" />
+        <Setter Property="TextColor" Value="{StaticResource StudioText}" />
+        <Setter Property="PlaceholderColor" Value="{StaticResource StudioTextFaint}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="MinimumHeightRequest" Value="36" />
+        <Setter Property="Margin" Value="0" />
+    </Style>
+
+    <Style x:Key="StudioEditor" TargetType="Editor">
+        <Setter Property="BackgroundColor" Value="{StaticResource StudioSurfaceAlt}" />
+        <Setter Property="TextColor" Value="{StaticResource StudioText}" />
+        <Setter Property="PlaceholderColor" Value="{StaticResource StudioTextFaint}" />
+        <Setter Property="FontSize" Value="13" />
+    </Style>
+
+    <Style x:Key="StudioPicker" TargetType="Picker">
+        <Setter Property="BackgroundColor" Value="{StaticResource StudioSurfaceAlt}" />
+        <Setter Property="TextColor" Value="{StaticResource StudioText}" />
+        <Setter Property="TitleColor" Value="{StaticResource StudioTextFaint}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="MinimumHeightRequest" Value="36" />
+    </Style>
+
+    <Style x:Key="StudioSlider" TargetType="Slider">
+        <Setter Property="MinimumTrackColor" Value="{StaticResource StudioAccent}" />
+        <Setter Property="MaximumTrackColor" Value="{StaticResource StudioBorderStrong}" />
+        <Setter Property="ThumbColor" Value="{StaticResource StudioAccent}" />
+        <Setter Property="MinimumHeightRequest" Value="32" />
+    </Style>
+
+    <Style x:Key="StudioSwitch" TargetType="Switch">
+        <Setter Property="OnColor" Value="{StaticResource StudioAccent}" />
+        <Setter Property="ThumbColor" Value="#F2F5FA" />
+    </Style>
+
+    <Style x:Key="StudioDivider" TargetType="BoxView">
+        <Setter Property="HeightRequest" Value="1" />
+        <Setter Property="Color" Value="{StaticResource StudioBorder}" />
+    </Style>
+
+</ResourceDictionary>
