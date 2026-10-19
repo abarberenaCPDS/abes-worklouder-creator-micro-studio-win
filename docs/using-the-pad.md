@@ -1,4 +1,4 @@
-# Using Micro Manager with the pad
+# Using Abe's WorkLouder Creator Micro Studio for Windows
 
 The practical guide: what each key does, where the colours come from, how the pad
 gets bound to the app, and what you can change. For the protocol underneath —
@@ -14,16 +14,16 @@ see [`../PLAN.md`](../PLAN.md).
   the cable, so USB and Bluetooth are found the same way and unplugging the pad
   changes nothing. Pairing is done in Windows Settings, as for any Bluetooth
   device.
-- A running **Herdr** server with at least one agent pane. The pad shows
-  `agent.list` and nothing else: with Herdr unreachable the app still drives the
-  pad, but every key goes dark and the status line reports the error. On Windows
+- A running **Herdr** server for agent status and Herdr-backed actions. With
+  Herdr unreachable the app can still drive the device and Windows system
+  actions, but agent lights and Herdr actions report the connection error. On Windows
   that usually means Herdr inside WSL — see [Reaching Herdr](#reaching-herdr).
 - **Quit Work Louder's `Input` app and the Codex desktop app** while you use
   this. All three drive the same lighting and will overwrite each other. Windows
   needs no permission grant (unlike macOS Input Monitoring), but the port does
   **not** yet detect a second client, so there is no warning if one is running.
 - .NET 10 SDK to build and run. Launch the app from **F5 in Visual Studio** or by
-  running the built `MicroManager.App.exe`.
+  running the built `AbesWorkLouderCreatorMicroStudio.Windows.exe`.
 
 The app has no taskbar entry: it lives in the tray. Left-click the tray icon to
 toggle the window, right-click for the menu.
@@ -38,7 +38,10 @@ toggle the window, right-click for the menu.
 | **Pad keys** | 13 swatches mirroring the pad, each showing that key's live colour |
 | last action | what the pad was last used for — the pad has no screen of its own |
 | agent list | one row per Herdr agent, in Herdr's own order, each in its key's colour — click a row to jump to that agent |
-| **Lights** | driving the pad by hand — the macOS Inspector's colour controls, see [Changing the colours](#changing-the-colours) |
+| **Controls** | physical pad map and configurable action bindings |
+| **Lighting** | saved Studio profile, with live preview, save and revert |
+| **Herdr** | agents, slot/action mappings, transport and input availability |
+| **Inspector** | temporary manual lighting controls |
 
 Agents are named by the **pane's own title**, the same text Herdr's panel shows
 for that pane: Claude's current task (`bug-prefill`), Codex's `repo | branch`.
@@ -70,7 +73,7 @@ so is every lighting payload the app sends.
                  agent 2     agent 3     agent 4     agent 5
  row 3    |  key 6  |   |  key 7  |  |  key 8  |  |  key 9  |
           +---------+   +---------+  +---------+  +---------+
-                 stack       tabs        land        macro
+                focus       next tab    focus       macro
  row 4    |     key 10 + key 11     |  |  key 12  |
           +-------------------------+  +---------+
              the wide key (voice)         macro
@@ -79,23 +82,24 @@ so is every lighting payload the app sends.
 | key | what it is | what a press does |
 |---|---|---|
 | `1`, `0`, `2`, `3`, `4`, `5` | the top two keys and the second row | **agent 0…5**, in the order Herdr's panel lists them |
-| `6` | row 3, first | *nothing yet* — floats the GitButler stack on macOS; not ported |
-| `7` | row 3, second | cycles the tabs of the focused Herdr window |
-| `8` | row 3, third | *nothing yet* — lands the agent's branches on macOS; not ported |
+| `6` | row 3, first | Focuses Herdr's current agent by default; reassign in **Controls** |
+| `7` | row 3, second | cycles to the next Herdr tab by default |
+| `8` | row 3, third | Focuses Herdr's current agent by default; reassign in **Controls** |
 | `9` | row 3, fourth | types its configured macro text (see below) |
-| `10` + `11` | row 4, the wide key | types its configured macro text; with none bound, *nothing* (it taps right-command for Superwhisper on macOS, which does not exist here) |
+| `10` + `11` | row 4, the wide key | starts Windows Voice Typing (`Win+H`) unless configured text/action overrides it |
 | `12` | row 4, third | types its configured macro text |
 | dial | turn | **scrolls** the focused pane, five lines a detent — right for down, left for up |
 | dial | press | *nothing* — the slot is left as the pad shipped it (play/pause) |
 | joystick | — | cycles the **model** for the focused agent |
 
 Agent slot N is the Nth key in reading order — `Pad.AgentKeyIds` in
-`windows/src/MicroManager.Core/Pad/Oai.cs`. That is the same mapping the lighting
+`windows/src/CreatorMicroStudio.Core/Pad/Oai.cs`. That is the same mapping the lighting
 uses, which is what makes the key you look at the key you press.
 
-If you want a different physical arrangement, the layout is code, not config:
-edit the constants in `Pad`. The pad's own keymap is re-asserted by the app (see
-below) so a custom layout will not survive on its own.
+The **Controls** page lets you change what every physical input does without
+changing the physical layout or writing action choices to the pad's flash.
+Firmware input availability still varies by profile; the page labels inputs the
+active profile does not report.
 
 ## Binding the pad: the keymap
 
@@ -127,114 +131,82 @@ Two consequences worth knowing:
   will put its own keycode back on the next connect. The app owns those keys.
 - If you switch the pad to a **different profile or layer**, the app's codes are
   no longer on the active layer, so the keys will stop lighting until you switch
-  back. The app always uses `activeProfileId` and that profile's first layer.
+  back. The app finds the profile by `activeProfileId` and uses that profile's
+  first layer.
 
 To see all of this at the transport level, run the console harness against the
 hardware; it prints `device.status`, `sys.version` and whether the keymap had to
 change:
 
 ```powershell
-dotnet run --project src\MicroManager.Console
+dotnet run --project src\CreatorMicroStudio.Console
 ```
 
-## The lights
+## Studio lighting and Inspector
 
-Each agent gets its own key. The colour is the agent's state, and the **underglow
-carries the worst state across all agents** — blocked beats working beats unknown
-beats idle beats done — so "does anything need me?" reads from across the room.
+Each agent gets its own key, colored by Herdr state. The underglow can follow the
+worst state across agents, use a custom look, or be off; the key backlight can be
+off or custom. Studio also supports fixed looks for individual keys that are not
+currently showing an agent. The defaults remain red/breathing for `blocked`,
+amber for `working`, blue for `done`, and green for `idle`/unknown.
 
-| state | colour | effect | what it means |
-|---|---|---|---|
-| `blocked` | `#FF2D2D` red | **breathing** | the agent needs you |
-| `working` | `#FFA000` amber | solid | busy |
-| `done` | `#00B0FF` blue | solid | finished and **not yet looked at** |
-| `idle` | `#00C853` green | solid | finished and seen |
-| `unknown` | `#00C853` green | solid | a state the app does not know |
+The **Lighting** sidebar page owns the persistent Studio profile: global
+brightness/speed, each status look, underglow, backlight, and per-key overrides.
+Edits preview on the pad and save after about three seconds of inactivity; use
+**Save now**, **Revert**, or **Restore defaults** when needed. Preferences live in
+the host `config.json`; they do not consume device flash or change key bindings.
+Studio loads and reapplies its saved look when it starts, reconnects, or takes the
+pad back.
 
-Herdr reports `done` for an agent that has finished and that you have not focused
-yet, and `idle` once it is focused. That is a real difference — one is waiting to
-be read, the other is just quiet — which is why they are different colours.
+The **Inspector** sidebar page is the temporary manual-lighting console. Applying
+a hand-built key/zone look suspends Studio painting while the page is active. It
+is not saved; leaving Inspector returns the pad to Studio's saved profile. Use
+Lighting—not Inspector—for permanent settings.
 
-The keys that are not agents are dimmer, so the agent row stays the thing you
-read:
-
-| key | colour | brightness |
-|---|---|---|
-| stack `6` | `#7C4DFF` purple | 30% (full, breathing, while the panel is open — not ported) |
-| tabs `7` | `#00BFA5` teal | 30% |
-| land `8` | `#E91E63` pink | 30% (full, breathing, while the panel is open — not ported) |
-| macro `9`, `12` | `#90A4AE` grey-blue | 25% |
-| voice `10`, `11` | `#ECEFF1` off-white | 25%, and only while nothing is bound to them |
-
-Agent keys sit at full brightness. There are two addressable **zones** as well as
-the per-key threads: the key backlight and the underglow. The port paints the
-**underglow** with the aggregate and leaves the key backlight zone dark, because a
-zone colour would only compete with the per-agent keys underneath it.
-
-Turning the bridge **off** (tray menu or the window button) clears every thread
-from `AG00` to `AG19` and both zones, but deliberately leaves the keymap alone:
-rebinding is a flash write, and the keys light instantly on the way back in
-because the bindings are still there.
-
-### Changing the colours
-
-These are two different things: what colour a *state* gets, and what colour a
-*key* gets.
-
-The **Lights** console at the bottom of the window drives the pad by hand. It is
-the macOS **Inspector**'s colour controls, which is the only place in either
-implementation where you choose a colour yourself: select keys (or all of them),
-set colour, effect, brightness and speed, then apply to the selection, to the
-whole key-backlight zone, or to the underglow. **All lights off** clears
-everything.
-
-Applying turns on **Take the lights off the bridge** by itself, because the
-bridge repaints every 2.5 s and a colour applied underneath it would be gone
-before you saw it. While that switch is on the bridge still tracks Herdr and
-every key still works — it simply stops painting. Nothing here is saved: hand the
-lights back and the automatic palette returns within a tick. (On macOS the
-Inspector is a separate process, so it competes with the bridge instead, and its
-colours never last.)
-
-The **automatic** palette is a different matter: it is compiled in, in
-`windows/src/MicroManager.Core/Config/StatusMapper.cs`, and there is **no config
-file** for it — not in this port and not in the macOS original.
-
-- `BridgeConfig.Colors` — state to packed `0xRRGGBB`
-- `BridgeConfig.Effects` — state to `Oai.Effect`
-  (`Off` `Solid` `Snake` `Rainbow` `Breath` `Gradient` `ShallowBreath`)
-- `BridgeConfig.Priority` — the worst-state-wins order for the underglow
-- `Brightness`, `Speed` — the defaults every thread is built from
-- `StackColor`, `TabCycleColor`, `LandColor`, `VoiceColor`, `MacroColor` — the
-  fixed-purpose keys
-
-`BridgeConfig` also carries `DriveBacklight` (paint the key zone with the
-aggregate after all) and `ManageKeymap` (bind the keys on startup), but nothing
-loads a config file yet, so both are compile-time only — and `ManageKeymap` is
-not honoured at all: the port always applies the keymap.
-
-Change a value and rebuild. The window's own chrome colours are separate, in
-`App.xaml.cs`.
-
+Turning the bridge **off** (tray menu or the Studio page) clears every thread
+from `AG00` to `AG19` and both zones, but leaves the keymap and saved Studio
+lighting alone. Turning it back on reapplies the saved profile.
 ## Configuration
 
-Everything works without a config file. To rebind the macro keys, or change what
-the dial and joystick offer, drop a `config.json` into
-`%USERPROFILE%\.config\micromanager\` — or `%XDG_CONFIG_HOME%\micromanager\`
-when `XDG_CONFIG_HOME` is set. This is the macOS path and shape, deliberately:
-one file drives both implementations. (Note this is *not* `%APPDATA%`.)
+Everything works without a config file. Studio stores settings in
+`%USERPROFILE%\.config\creator-micro-studio\config.json` — or
+`%XDG_CONFIG_HOME%\creator-micro-studio\config.json` when `XDG_CONFIG_HOME` is
+set. Existing `%USERPROFILE%\.config\micromanager\config.json` settings are
+read as a legacy fallback and migrate on the first Studio save; the source file
+is left intact. This is not `%APPDATA%`.
 
 ```json
 {
   "keys": {
-    "9":     "Open PRs for all active GitButler branches",
-    "12":    "Run but pull",
+    "9":     "Open a pull request for this branch",
+    "12":    "Run the test suite",
     "10+11": "Summarise what you are working on"
+  },
+  "actions": {
+    "0": "focus-agent",
+    "6": "focus-slot",
+    "7": "next-tab",
+    "13": { "type": "scroll", "direction": "down", "amount": 5 },
+    "dial-push": { "type": "media-key", "key": "play-pause" },
+    "joy-up": "model-previous",
+    "12": { "type": "submit-prompt", "text": "Run the test suite" }
   },
   "dial": "scroll",
   "scroll": { "lines": 5 },
   "claude": { "models": ["fable", "opus", "sonnet", "haiku"], "efforts": ["low", "medium", "high", "xhigh", "max"] },
-  "codex":  { "models": ["gpt-5.6-sol", "gpt-5.6-codex"] }
+  "codex":  { "models": ["gpt-5.6-sol", "gpt-5.6-codex"] },
+  "lighting": {
+    "brightness": 1.0,
+    "speed": 0.5,
+    "status": {
+      "blocked": { "c": "#FF2D2D", "e": "breath" },
+      "working": { "c": "#FFA000", "e": "solid" },
+      "done": { "c": "#00B0FF", "e": "solid" },
+      "idle": { "c": "#00C853", "e": "solid" }
+    },
+    "underglow": { "mode": "status", "c": "#00C853", "e": "rainbow" },
+    "backlight": { "mode": "off", "c": "#FFA000", "e": "solid" }
+  }
 }
 ```
 
@@ -242,12 +214,48 @@ A bound string is **typed into the focused agent's prompt, unsubmitted** — you
 still read it and press enter. `"10+11"` addresses the wide key as one; `"10"`
 and `"11"` address its halves separately. Keys the file does not mention keep
 their defaults (`9` and `12` have built-in text, the wide key has none), and an
-empty string unbinds a key outright. Binding the wide key to text is what turns
-it into a macro key; with no binding it does nothing on Windows.
+empty string unbinds a legacy text binding. An explicit `actions` entry takes
+precedence over the legacy text map. Without text/action overrides, the wide key
+starts Windows Voice Typing (`Win+H`).
 
-The file is read **once per bridge start**, so a change needs an off/on toggle,
-not a relaunch. A malformed file falls back to the defaults rather than leaving
-you with a dead pad.
+The Controls page saves edits to `actions` as they are applied and updates the
+running bridge immediately. External edits to the JSON are picked up on the next
+bridge start/off-on cycle. A malformed file falls back to defaults when read;
+saves refuse to replace malformed JSON.
+
+### Configurable actions
+
+Controls can assign every action to any input:
+
+- **Herdr / agents:** Focus Agent, Focus slot 1–6, next/previous tab or workspace,
+  focus pane by direction, zoom pane, send keys, Herdr command.
+- **Prompts:** Insert text (unsubmitted) or Submit prompt.
+- **Tune:** Effort up/down, next/previous model, confirm/cancel model picker.
+- **System:** Scroll, keyboard shortcut, media key, Voice Typing, type text.
+- **Launch:** Open URL/file/app or run a configured PowerShell command.
+- **General:** Do nothing.
+
+Parameterized action entries use a `type` object, for example
+`{"type":"scroll","direction":"up","amount":3}` or
+`{"type":"focus-slot","slot":2}`. Free text uses a `text`, `keys`, `url`, or
+`command` field as appropriate. `actions` accepts numeric input IDs and aliases
+such as `dial-right`, `dial-push`, and `joy-up`; a numeric entry takes precedence
+over an alias. Legacy `keys`, `dial`, `scroll`, `claude`, and `codex` settings
+remain supported.
+
+Herdr commands are CLI arguments without a leading `herdr`; the command is split
+with shell-like quoting but launched as an argument array, never through a shell.
+Placeholders are fetched when the input is pressed: `{tab}`, `{tab_label}`,
+`{workspace}`, `{workspace_label}`, `{pane}`, `{agent}`. `{ask:Prompt}` and
+`{ask:Prompt=Default}` show a prompt; cancel stops the action. The executable is
+found on `PATH` or by `WL_HERDR_PATH`. When `HERDR_SOCKET_PATH` points inside
+WSL, Studio runs `herdr` inside the selected/default distro through `wsl.exe`;
+install the Herdr CLI there. `WL_HERDR_PATH` can name its Linux executable path.
+
+System actions use Windows input APIs. Windows Voice Typing uses Win+H; synthesized
+input can be blocked when the target app is elevated. Standard media keys work;
+brightness keys do not have a portable Windows media-key mapping and report an
+unsupported-action error.
 
 `"dial"` is `"scroll"` (the default) or `"effort"` — see [The dial](#the-dial).
 An unrecognised word keeps the default rather than leaving the dial dead.
@@ -275,6 +283,7 @@ rather than owning it, so there is nothing to read it from.
 | `WL_TERMINAL_PROCESS` | the terminal **executable name** to raise on an agent press |
 | `HERDR_SOCKET_PATH` | the Herdr socket: a Windows pipe name, or an absolute path inside WSL (see [Reaching Herdr](#reaching-herdr)) |
 | `MICROMANAGER_WSL_DISTRO` | the distro that holds Herdr, when it is not WSL's default |
+| `WL_HERDR_PATH` | optional full path to the `herdr` CLI used by Herdr command actions |
 | `XDG_CONFIG_HOME` | moves the config directory |
 
 `WL_TERMINAL_PROCESS` matters more than it looks: see below.
@@ -314,7 +323,7 @@ Two things it needs:
 To check it before launching the app at all:
 
 ```powershell
-dotnet test tests\MicroManager.Core.Tests\MicroManager.Core.Tests.csproj --filter FullyQualifiedName~HerdrWslTests
+dotnet test tests\CreatorMicroStudio.Core.Tests\CreatorMicroStudio.Core.Tests.csproj --filter FullyQualifiedName~HerdrWslTests
 ```
 
 Those two live tests skip themselves unless `HERDR_SOCKET_PATH` names a socket
@@ -408,12 +417,9 @@ the agent's own line-scroll action to a key the pad can send, and name that key 
 (wheel-bound by default) in `~/.claude/keybindings.json`. A detent sends the key
 `"lines"` times, so the distance still comes out the same.
 
-**Pressing the dial does nothing.** The encoder's third slot is left exactly as
-the pad shipped it — the play/pause media key — so a click reaches the host as a
-keystroke and is nothing to the app. That is what the macOS app does too: unlike
-the key grid and the two rotations, this slot is not taken over. A pad still
-carrying `AG19` there, left by an earlier build of this port, gets the stock key
-back on the next connect.
+**The dial push is usually unavailable.** The encoder's third slot stays the
+stock play/pause key. Controls lists Dial push, but marks it unavailable unless
+the active profile reports AG19; keymap setup never takes over stock play/pause.
 
 Set `"dial": "effort"` in the config file to put the rotation back on **reasoning
 effort** for the focused agent:
@@ -464,11 +470,13 @@ switcher.
    — slot N is row N.
 3. Press an agent key: the status line says `Focused <name>`, Herdr selects that
    pane, and the terminal comes forward.
-4. Press a macro key: the text appears in the focused pane's prompt, unsent.
+4. Press a macro key: the text appears in the focused pane's prompt, unsent; use
+   Controls to assign any other action to that input.
 5. Turn the dial: the status line reports the scroll — `12/240 lines back` in a
    pane drawing to the normal screen, or `nothing to scroll — a full-screen app
    keeps its own output` in one that draws itself (see [The dial](#the-dial)).
-6. Click the dial: nothing happens — that slot is left as the pad shipped it.
+6. Click the dial: the stock play/pause key is preserved unless the active
+   profile reports the dial push as an AG19 input.
 
 If the lights are right but presses do nothing, that is the keymap: lit keys have
 their `AG` binding, so a key that lights can report itself. A key that stays dark
@@ -506,12 +514,11 @@ visible only through the app's swatch row.
 These exist on macOS and are **not** in this port; the plan is in
 [`../PLAN.md`](../PLAN.md):
 
-- the **stack** key and the **land** key — both fall flat, and the keys do nothing
-- the **voice** key — Superwhisper is macOS-only, so the wide key only works when
-  you bind text to it
-- the **Inspector** debug UI, and the emulator's own window — the lights console
-  covers the Inspector's colour and effect controls, but not its traffic log, raw
-  JSON-RPC console, key walk or "resend whole pad"
+- the **GitButler stack** and **land branches** actions/panels
+- the Inspector's traffic log, raw JSON-RPC console, key walk and "resend whole
+  pad"; the Windows Inspector page is only the temporary manual-lighting console
+- the emulator's own interactive window
 - **Herdr event streams** — the port polls, so transitions are not instant
 - a **second-client warning**, and **open at login**
-- **manageKeymap: false** — the port always applies the keymap
+- **manageKeymap: false** — the app always validates/applies its required event
+  keymap on connect

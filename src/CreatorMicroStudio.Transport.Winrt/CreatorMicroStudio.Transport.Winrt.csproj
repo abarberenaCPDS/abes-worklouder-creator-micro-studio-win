@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>AbesWorkLouderCreatorMicroStudio.Windows.Transport.Winrt</RootNamespace>
+    <AssemblyName>AbesWorkLouderCreatorMicroStudio.Windows.Transport.Winrt</AssemblyName>
+
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CreatorMicroStudio.Core\CreatorMicroStudio.Core.csproj" />
+  </ItemGroup>
+
+</Project>

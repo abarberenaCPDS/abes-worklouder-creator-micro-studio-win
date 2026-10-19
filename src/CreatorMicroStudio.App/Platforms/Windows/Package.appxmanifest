@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
+         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         IgnorableNamespaces="uap mp">
+
+  <Identity
+    Name="dev.abeisonai.worklouder.creatormicrostudio.windows"
+    Publisher="CN=Abe Barberenagil"
+    Version="0.4.0.0" />
+
+  <mp:PhoneIdentity PhoneProductId="12345678-1234-1234-1234-123456789012" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+
+  <Properties>
+    <DisplayName>Abe's WorkLouder Creator Micro Studio for Windows</DisplayName>
+    <PublisherDisplayName>Abe</PublisherDisplayName>
+    <Logo>Resources\Images\studio_icon.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.19041.0" MaxVersionTested="10.0.22621.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="x-generate"/>
+  </Resources>
+
+  <Applications>
+    <Application Id="App"
+                 Executable="$targetnametoken$.exe"
+                 EntryPoint="$targetentrypoint$">
+      <uap:VisualElements
+        DisplayName="Abe's WorkLouder Creator Micro Studio for Windows"
+        Square150x150Logo="Resources\Images\studio_icon.png"
+        Square44x44Logo="Resources\Images\studio_icon.png"
+        BackgroundColor="#101827"
+        Description="Abe's Studio for the Work Louder Creator Micro 2">
+        <uap:DefaultTile ShortName="Creator Micro Studio"/>
+        <uap:SplashScreen Image="Resources\Images\studio_icon.png" />
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <Capability Name="internetClient"/>
+  </Capabilities>
+
+</Package>

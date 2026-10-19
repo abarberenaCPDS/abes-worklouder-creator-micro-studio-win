@@ -7,15 +7,15 @@
 
     Override it for a one-off build or a CI run without touching the file:
 
-        dotnet build MicroManager.sln -p:Version=0.2.0-rc.1
+        dotnet build AbesWorkLouderCreatorMicroStudio.Windows.sln -p:Version=0.4.1-rc.1
 
     What each version contains is recorded in CHANGELOG.md.
   -->
   <PropertyGroup>
-    <Version>0.3.0</Version>
-    <Product>Micro Manager</Product>
-    <Company>Micro Manager</Company>
-    <Authors>Micro Manager contributors</Authors>
+    <Version>0.4.0</Version>
+    <Product>Abe's WorkLouder Creator Micro Studio for Windows</Product>
+    <Company>Abe</Company>
+    <Authors>Abe</Authors>
   </PropertyGroup>
 
 </Project>

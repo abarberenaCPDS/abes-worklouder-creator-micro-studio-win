@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:views="clr-namespace:AbesWorkLouderCreatorMicroStudio.Windows.Views"
+             x:Class="AbesWorkLouderCreatorMicroStudio.Windows.Views.StudioLightingPage">
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="16">
+            <VerticalStackLayout Spacing="4">
+                <Label Text="Studio Lighting" FontSize="28" FontAttributes="Bold" />
+                <Label Text="Persistent host-side lighting preferences. These controls never write to the device keymap."
+                       TextColor="#AEB8C7" />
+            </VerticalStackLayout>
+
+            <Border Padding="16" Stroke="#344155" StrokeShape="RoundRectangle 10">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Global" FontSize="18" FontAttributes="Bold" />
+                    <Grid ColumnDefinitions="105,*,48" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="8">
+                        <Label Text="Brightness" VerticalOptions="Center" />
+                        <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Brightness}" />
+                        <Label Grid.Column="2" Text="{Binding BrightnessText}" VerticalOptions="Center" />
+                        <Label Grid.Row="1" Text="Speed" VerticalOptions="Center" />
+                        <Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Speed}" />
+                        <Label Grid.Row="1" Grid.Column="2" Text="{Binding SpeedText}" VerticalOptions="Center" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Padding="16" Stroke="#344155" StrokeShape="RoundRectangle 10">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Status looks" FontSize="18" FontAttributes="Bold" />
+                    <Label Text="The selected look is used for each matching agent state and status-driven underglow."
+                           FontSize="12" TextColor="#AEB8C7" />
+                    <VerticalStackLayout Spacing="12" BindableLayout.ItemsSource="{Binding StatusLooks}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="10" Stroke="#344155" StrokeShape="RoundRectangle 8">
+                                    <VerticalStackLayout Spacing="7">
+                                        <Label Text="{Binding State}" FontAttributes="Bold" TextColor="#73B8FF" />
+                                        <Grid ColumnDefinitions="72,*,90" ColumnSpacing="8">
+                                            <Label Text="Color" VerticalOptions="Center" FontSize="12" />
+                                            <Entry Grid.Column="1" Text="{Binding Look.ColorHex}" Placeholder="#RRGGBB" />
+                                             <Picker Grid.Column="2" ItemsSource="{Binding Source={RelativeSource AncestorType={x:Type views:StudioLightingPage}}, Path=BindingContext.Effects}"
+                                                    SelectedItem="{Binding Look.Effect}" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="Auto,*,42" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="3">
+                                            <Switch IsToggled="{Binding Look.UseBrightness}" />
+                                            <Label Grid.Column="0" Text="Local brightness" VerticalOptions="Center" Margin="52,0,0,0" FontSize="12" />
+                                            <Slider Grid.Row="0" Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Look.Brightness}" IsEnabled="{Binding Look.UseBrightness}" />
+                                            <Label Grid.Row="0" Grid.Column="2" Text="{Binding Look.BrightnessText}" VerticalOptions="Center" FontSize="11" />
+                                            <Switch Grid.Row="1" IsToggled="{Binding Look.UseSpeed}" />
+                                            <Label Grid.Row="1" Grid.Column="0" Text="Local speed" VerticalOptions="Center" Margin="52,0,0,0" FontSize="12" />
+                                            <Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Look.Speed}" IsEnabled="{Binding Look.UseSpeed}" />
+                                            <Label Grid.Row="1" Grid.Column="2" Text="{Binding Look.SpeedText}" VerticalOptions="Center" FontSize="11" />
+                                        </Grid>
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Padding="16" Stroke="#344155" StrokeShape="RoundRectangle 10">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Underglow" FontSize="18" FontAttributes="Bold" />
+                    <Grid ColumnDefinitions="105,*" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="8">
+                        <Label Text="Mode" VerticalOptions="Center" />
+                        <Picker Grid.Column="1" ItemsSource="{Binding UnderglowModes}" SelectedItem="{Binding UnderglowMode}" />
+                        <Label Grid.Row="1" Text="Look color" VerticalOptions="Center" />
+                        <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,120" ColumnSpacing="8">
+                            <Entry Text="{Binding UnderglowLook.ColorHex}" Placeholder="#RRGGBB" />
+                            <Picker Grid.Column="1" ItemsSource="{Binding Effects}" SelectedItem="{Binding UnderglowLook.Effect}" />
+                        </Grid>
+                    </Grid>
+                    <Grid ColumnDefinitions="Auto,*,44" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="3">
+                        <Switch IsToggled="{Binding UnderglowLook.UseBrightness}" />
+                        <Label Grid.Column="0" Text="Local brightness" VerticalOptions="Center" Margin="52,0,0,0" FontSize="12" />
+                        <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding UnderglowLook.Brightness}" IsEnabled="{Binding UnderglowLook.UseBrightness}" />
+                        <Label Grid.Column="2" Text="{Binding UnderglowLook.BrightnessText}" VerticalOptions="Center" FontSize="11" />
+                        <Switch Grid.Row="1" IsToggled="{Binding UnderglowLook.UseSpeed}" />
+                        <Label Grid.Row="1" Grid.Column="0" Text="Local speed" VerticalOptions="Center" Margin="52,0,0,0" FontSize="12" />
+                        <Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding UnderglowLook.Speed}" IsEnabled="{Binding UnderglowLook.UseSpeed}" />
+                        <Label Grid.Row="1" Grid.Column="2" Text="{Binding UnderglowLook.SpeedText}" VerticalOptions="Center" FontSize="11" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Padding="16" Stroke="#344155" StrokeShape="RoundRectangle 10">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Backlight" FontSize="18" FontAttributes="Bold" />
+                    <Grid ColumnDefinitions="105,*" RowDefinitions="Auto,Auto" ColumnSpacing="10" RowSpacing="8">
+                        <Label Text="Mode" VerticalOptions="Center" />
+                        <Picker Grid.Column="1" ItemsSource="{Binding BacklightModes}" SelectedItem="{Binding BacklightMode}" />
+                        <Label Grid.Row="1" Text="Look color" VerticalOptions="Center" />
+                        <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,120" ColumnSpacing="8">
+                            <Entry Text="{Binding BacklightLook.ColorHex}" Placeholder="#RRGGBB" />
+                            <Picker Grid.Column="1" ItemsSource="{Binding Effects}" SelectedItem="{Binding BacklightLook.Effect}" />
+                        </Grid>
+                    </Grid>
+                    <Grid ColumnDefinitions="Auto,*,44" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="3">
+                        <Switch IsToggled="{Binding BacklightLook.UseBrightness}" />
+                        <Label Grid.Column="0" Text="Local brightness" VerticalOptions="Center" Margin="52,0,0,0" FontSize="12" />
+                        <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding BacklightLook.Brightness}" IsEnabled="{Binding BacklightLook.UseBrightness}" />
+                        <Label Grid.Column="2" Text="{Binding BacklightLook.BrightnessText}" VerticalOptions="Center" FontSize="11" />
+                        <Switch Grid.Row="1" IsToggled="{Binding BacklightLook.UseSpeed}" />
+                        <Label Grid.Row="1" Grid.Column="0" Text="Local speed" VerticalOptions="Center" Margin="52,0,0,0" FontSize="12" />
+                        <Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding BacklightLook.Speed}" IsEnabled="{Binding BacklightLook.UseSpeed}" />
+                        <Label Grid.Row="1" Grid.Column="2" Text="{Binding BacklightLook.SpeedText}" VerticalOptions="Center" FontSize="11" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Padding="16" Stroke="#344155" StrokeShape="RoundRectangle 10">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Per-key looks" FontSize="18" FontAttributes="Bold" />
+                    <Label Text="Enable an override to assign a color/effect to a physical key. Agent-state lighting still takes precedence while that key is assigned to an agent."
+                           FontSize="12" TextColor="#AEB8C7" />
+                    <VerticalStackLayout Spacing="10" BindableLayout.ItemsSource="{Binding KeyLooks}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="10" Stroke="#344155" StrokeShape="RoundRectangle 8">
+                                    <VerticalStackLayout Spacing="6">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                                            <Switch IsToggled="{Binding HasOverride}" />
+                                            <Label Grid.Column="1" Text="{Binding KeyId, StringFormat='Key {0}'}" FontAttributes="Bold" VerticalOptions="Center" />
+                                            <Label Grid.Column="2" Text="Override" FontSize="12" VerticalOptions="Center" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="65,*,100" ColumnSpacing="8" IsEnabled="{Binding HasOverride}">
+                                            <Label Text="Color" VerticalOptions="Center" FontSize="12" />
+                                            <Entry Grid.Column="1" Text="{Binding Look.ColorHex}" Placeholder="#RRGGBB" />
+                                             <Picker Grid.Column="2" ItemsSource="{Binding Source={RelativeSource AncestorType={x:Type views:StudioLightingPage}}, Path=BindingContext.Effects}"
+                                                    SelectedItem="{Binding Look.Effect}" />
+                                        </Grid>
+                                        <Grid ColumnDefinitions="Auto,*,42" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="2" IsEnabled="{Binding HasOverride}">
+                                            <Switch IsToggled="{Binding Look.UseBrightness}" />
+                                            <Label Grid.Column="0" Text="Local brightness" VerticalOptions="Center" Margin="52,0,0,0" FontSize="12" />
+                                            <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Look.Brightness}" IsEnabled="{Binding Look.UseBrightness}" />
+                                            <Label Grid.Column="2" Text="{Binding Look.BrightnessText}" VerticalOptions="Center" FontSize="11" />
+                                            <Switch Grid.Row="1" IsToggled="{Binding Look.UseSpeed}" />
+                                            <Label Grid.Row="1" Grid.Column="0" Text="Local speed" VerticalOptions="Center" Margin="52,0,0,0" FontSize="12" />
+                                            <Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Look.Speed}" IsEnabled="{Binding Look.UseSpeed}" />
+                                            <Label Grid.Row="1" Grid.Column="2" Text="{Binding Look.SpeedText}" VerticalOptions="Center" FontSize="11" />
+                                        </Grid>
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Padding="14" Stroke="#344155" StrokeShape="RoundRectangle 10">
+                <VerticalStackLayout Spacing="8">
+                    <HorizontalStackLayout Spacing="8" HorizontalOptions="Center">
+                        <Button Text="Preview" Command="{Binding PreviewCommand}" />
+                        <Button Text="Revert" Command="{Binding RevertCommand}" />
+                        <Button Text="Save now" Command="{Binding SaveNowCommand}" />
+                        <Button Text="Restore defaults" Command="{Binding RestoreDefaultsCommand}" />
+                    </HorizontalStackLayout>
+                    <Label Text="{Binding Status}" FontSize="12" HorizontalTextAlignment="Center" TextColor="#AEB8C7" />
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentView>

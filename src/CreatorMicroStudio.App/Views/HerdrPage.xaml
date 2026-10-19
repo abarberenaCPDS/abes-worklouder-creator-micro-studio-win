@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+              x:Class="AbesWorkLouderCreatorMicroStudio.Windows.Views.HerdrPage">
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="18">
+            <VerticalStackLayout Spacing="4">
+                <Label Text="Herdr" FontSize="28" FontAttributes="Bold" />
+                <Label Text="Live agent order, pad slot mapping, and host-side input actions. This page does not write the device keymap."
+                       TextColor="#AEB8C7" />
+            </VerticalStackLayout>
+
+            <Border Padding="16" Stroke="#344155" StrokeShape="RoundRectangle 10">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Connection context" FontSize="18" FontAttributes="Bold" />
+                    <Label Text="Transport" FontAttributes="Bold" />
+                    <Label Text="{Binding TransportContext}" LineBreakMode="CharacterWrap" />
+                    <Label Text="Socket path" FontAttributes="Bold" />
+                    <Label Text="{Binding SocketPath}" LineBreakMode="CharacterWrap" />
+                    <Label Text="{Binding MetadataStatus}" FontSize="12" TextColor="#D6AD55" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Padding="16" Stroke="#344155" StrokeShape="RoundRectangle 10">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Agents and pad slots" FontSize="18" FontAttributes="Bold" />
+                    <Label Text="Agents stay in Herdr server order. The first six map to the pad's six agent slots; click a row to request focus in Herdr."
+                           FontSize="12" TextColor="#AEB8C7" />
+                    <Label Text="{Binding AgentStatus}" FontSize="12" TextColor="#AEB8C7" />
+                    <VerticalStackLayout Spacing="8" BindableLayout.ItemsSource="{Binding Agents}">
+                        <BindableLayout.EmptyView>
+                            <Label Text="No agent snapshot yet." TextColor="#AEB8C7" />
+                        </BindableLayout.EmptyView>
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="12" Stroke="#344155" StrokeShape="RoundRectangle 8">
+                                    <VerticalStackLayout Spacing="4">
+                                        <Button Text="{Binding Name}" Command="{Binding FocusCommand}"
+                                                CommandParameter="{Binding .}" HorizontalOptions="Fill"
+                                                FontAttributes="Bold" />
+                                        <Label Text="{Binding FocusIndicator}" TextColor="#73B8FF" FontSize="12"
+                                               IsVisible="{Binding Agent.Focused}" />
+                                        <Label Text="{Binding State}" FontSize="12" TextColor="#AEB8C7" />
+                                        <Label Text="{Binding Location}" FontSize="12" LineBreakMode="CharacterWrap" />
+                                        <Label Text="{Binding SlotSummary}" FontAttributes="Bold" />
+                                        <Label Text="{Binding SlotAction}" FontSize="12" TextColor="#AEB8C7"
+                                               IsVisible="{Binding HasSlot}" />
+                                        <Label Text="{Binding InputAvailability}" FontSize="11" TextColor="#D6AD55"
+                                               IsVisible="{Binding IsInputUnavailable}" />
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                    <Label Text="{Binding FocusStatus}" FontSize="12" TextColor="#AEB8C7" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Padding="16" Stroke="#344155" StrokeShape="RoundRectangle 10">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Physical input mappings" FontSize="18" FontAttributes="Bold" />
+                    <Label Text="These are host-side actions from the current bindings. Availability is reported for the active device profile; unavailable inputs may not emit events."
+                           FontSize="12" TextColor="#AEB8C7" />
+                    <Label Text="{Binding InputStatus}" FontSize="12" TextColor="#D6AD55" />
+                    <VerticalStackLayout Spacing="8" BindableLayout.ItemsSource="{Binding Inputs}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="10" Stroke="#344155" StrokeShape="RoundRectangle 8">
+                                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="3">
+                                        <Label Text="{Binding Name}" FontAttributes="Bold" />
+                                        <Label Grid.Column="1" Grid.RowSpan="3" Text="{Binding Availability}"
+                                               FontSize="11" TextColor="#D6AD55" VerticalOptions="Center"
+                                               IsVisible="{Binding IsUnavailable}" />
+                                        <Label Grid.Row="1" Text="{Binding Descriptor}" FontSize="11" TextColor="#AEB8C7" />
+                                        <Label Grid.Row="2" Text="{Binding Action}" FontSize="12" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentView>

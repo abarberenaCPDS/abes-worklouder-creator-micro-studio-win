@@ -1,11 +1,76 @@
-# Windows 11 port plan — Micro Manager (MAUI / .NET 10)
+# Windows 11 port plan — Abe's WorkLouder Creator Micro Studio for Windows (MAUI / .NET 10)
 
 Status: **Phase 2 in progress** — the MAUI app builds and launches via F5 (VS 2026, unpackaged), drives the real Creator Micro 2 over raw HID, binds its agent keymap, lives in the tray, and acts on key presses (agent key → `agent.focus` + raise the terminal). The Herdr connection is wired up too, including a server running inside WSL, and has been confirmed end-to-end on the real pad.
+
+## Studio controls and persistent profile work (0.4.0)
+
+This additive feature track brings the Xcode Studio's configurable controls and
+sidebar organization to Windows, while retaining Windows-specific device and
+system behavior. “Profile” means one saved Studio configuration (`config.json`),
+not multiple named profiles or the pad's firmware profile. Do not commit the
+supplied `abes-worklouder-creator-micro-studio/` reference directory.
+
+The Windows product identity is **Abe's WorkLouder Creator Micro Studio for
+Windows** and the intended repository slug is
+`abes-worklouder-creator-micro-studio-win`. Assemblies and C# namespaces use the
+`AbesWorkLouderCreatorMicroStudio.Windows.*` prefix. Windows-owned app, tray and
+splash assets do not depend on the untracked Xcode reference folder. The GitHub
+remote rename is an external action and is not performed by this worktree.
+
+- [x] Phase 0 — compare the reference docs/code with the Windows port; confirm
+  one persistent config, a safe legacy-config migration, and record dial-push/
+  joystick hardware limitations.
+- [x] Branding implementation — renamed solution, project folders, assemblies
+  and C# namespaces; updated product metadata, app/window/tray labels, docs and
+  the app/splash/tray icons. A local PowerShell script regenerates the ICO from
+  the Windows-owned art; existing `MICROMANAGER_*` environment aliases remain.
+- [ ] Branding validation — launch through Visual Studio F5 and confirm the
+  executable icon, splash, tray icon and window title on Windows.
+- [x] Phase 1 foundation — add the typed host-side action catalog, canonical
+  physical input descriptors, atomic config read/modify/write, and core tests.
+- [x] Phase 1 integration — action overrides are dispatched by `BridgeService`;
+  legacy config forms/aliases remain readable, the active config lives under
+  `creator-micro-studio`, and old `micromanager` settings migrate on first write.
+- [x] Phase 2 implementation — centralized dispatch now covers Herdr navigation,
+  prompts, tune/model, system actions, launch actions and argument-array Herdr
+  CLI commands. Core parser/config tests pass; live platform behavior still
+  needs F5/emulator validation.
+- [ ] Add fake-based dispatcher/system-input tests and verify the action set
+  from the Controls page with an emulator-generated input.
+- [x] Phase 3 implementation — Studio sidebar destinations and physical-map
+  Controls UI support action editing, bulk apply, reset, test, and profile
+  capability indicators. F5 visual validation remains.
+- [x] Phase 4 implementation — Studio lighting settings persist and repaint;
+  the Inspector/manual-lighting page is temporary and hands the pad back when
+  leaving. F5/hardware validation remains.
+- [x] Phase 5 implementation — Herdr status/mapping page and usage/config docs
+  are in place. Remaining: F5 visual pass, real pad/Herdr action verification,
+  and final acceptance checklist. Current SemVer is 0.4.0; the GitHub remote
+  rename remains external to this worktree.
+
+### Verification so far
+
+- `dotnet build AbesWorkLouderCreatorMicroStudio.Windows.sln` succeeds (existing
+  nullable/obsolete warnings remain).
+- `dotnet test tests\CreatorMicroStudio.Core.Tests\CreatorMicroStudio.Core.Tests.csproj --filter "FullyQualifiedName!~HerdrWslTests"` passes: 158 tests.
+- Setting `$env:MICROMANAGER_EMULATOR = "1"` and running
+  `dotnet run --no-build --project src\CreatorMicroStudio.Console` passes the
+  emulator HID/keymap smoke test.
+- `HerdrWslTests` is live when the environment selects a WSL socket; the current
+  configured server returned an empty agent list. Re-run against a real active
+  Herdr session before closing Phase 5.
+- The WSL Herdr CLI path-resolution test passes with `WL_HERDR_PATH=~/.local/bin/herdr`;
+  `herdr tab rename --help` confirms the CLI syntax is `tab rename <TAB_ID> <LABEL>...`.
+- Launching the MAUI window and visually checking the packaged taskbar/tray icon
+  still requires **F5 in Visual Studio 2026**; a shell launch is not a valid UI
+  check for this app.
+
+Progress details: `C:\Users\Abe.Barberenagil\.opencode\plan\worklouder-studio-windows.md`.
 
 ## Progress checklist
 
 - [x] Phase 0 — HID spike against real Creator Micro 2 (VID 0x303A / PID 0x8298, fw 0.6.3)
-- [x] Phase 1 — `MicroManager.Core` ported, 68/68 tests pass
+- [x] Phase 1 — `CreatorMicroStudio.Core` ported, 68/68 tests pass
 - [x] Phase 2 (shell) — MAUI app builds + launches via F5
 - [x] Phase 2 (device) — `WinrtTransport` wired into `BridgeService`; verified against real hardware (`device.status`, `sys.version`, `v.oai.thstatus` all answered). Also fixed a HID **write deadlock**: the blocking read loop and the writes shared one synchronous handle, so `WriteFile` could block forever — the transport now writes on a dedicated handle.
 - [x] Phase 2 (keymap) — `KeymapManager.ApplyAsync` now completes against the real pad (reports "already applied" on the pad, and applies cleanly on the emulator). Two bugs fixed: the emulator returned `fs.read`'s `data` as a nested object where the firmware — and the Swift emulator — return a JSON **string**, so every emulated read failed to parse; and the joystick check demanded all four cardinal sectors, but firmware 0.6.3's radial stick exposes only two (0.25/0.75), so the check could never pass. The check now verifies the cardinals the device actually exposes (an exposed cardinal with a wrong code still fails).
@@ -20,7 +85,7 @@ Status: **Phase 2 in progress** — the MAUI app builds and launches via F5 (VS 
 - [ ] Phase 2 (login item) — start with Windows via `HKCU\...\Run`
 - [ ] Upstream issue — propose the `windows/` subdirectory before Phase 2 grows
 - [ ] Phase 3 (parity) — stack float window, land panel, emulator window, wide-key default. The lights console covers the macOS Inspector's colour and effect controls only; its traffic log, raw JSON-RPC console, key walk and "resend whole pad" are still unported.
-- [ ] Phase 3 (packaging/CI) — unpackaged zip v1, `windows-latest` CI job publishing `MicroManager-win-x64.zip`
+- [ ] Phase 3 (packaging/CI) — unpackaged zip v1, `windows-latest` CI job publishing `AbesWorkLouderCreatorMicroStudio-win-x64.zip`
 - [x] Phase 4 (Bluetooth) — no work needed: it already works. `WinrtTransport` matches on vendor + usage pair over the *HID class*, never on the bus, so it finds the vendor collection over USB and Bluetooth alike; verified on the real pad with the cable out (`Connected via win32-hid`, `battery: 99`, `is_charging: false`). What was missing was not Bluetooth support but **recovery**, and that has since landed: a drop is noticed and the pad reopened. See [Phase 4](#phase-4--bluetooth).
 
 Goal: an MVP tray app for Windows 11 that does what the macOS menu-bar app does — light pad keys per Herdr agent state and jump to agents on key press — then reach full parity. MVP first, full parity after. Code lands in `windows/` as a separate solution alongside the Swift package.
@@ -31,7 +96,7 @@ Goal: an MVP tray app for Windows 11 that does what the macOS menu-bar app does 
 - Herdr runs natively on Windows (GA) and exposes the same newline-delimited JSON API over a **named pipe** instead of a Unix socket ([herdr.dev/docs/socket-api](https://herdr.dev/docs/socket-api)). `NamedPipeClientStream` covers it. A Herdr server inside **WSL** is the case that actually comes up on a dev box, and it serves a *Linux* socket — reached through `nc -U` over `wsl.exe` (see the checklist).
 - Windows has no Input Monitoring permission gate for HID vendor collections — the app's biggest macOS papercut (signing/ad-hoc hash churn) disappears.
 
-## What ports cleanly (put in `src/MicroManager.Core`, target net10.0)
+## What ports cleanly (put in `src/CreatorMicroStudio.Core`, target net10.0)
 
 | Source | Destination | Notes |
 |---|---|---|
@@ -39,7 +104,7 @@ Goal: an MVP tray app for Windows 11 that does what the macOS menu-bar app does 
 | `Sources/WLKit/WLDevice.swift` | Core (framing) + Windows transport impl | separate transport interface; pure codec (chunking, brace reassembly, pending RPC ids <1000) goes in Core |
 | `Sources/WLKit/HerdrClient.swift` | Core | `UnixDomainSocketEndPoint` (macOS/Linux) / `NamedPipeClientStream` (Windows), one-request-per-connection |
 | `Sources/WLKit/StatusMapper.swift` | Core | pure logic |
-| `Sources/WLKit/KeyBindings.swift` | Core | ported as-is: `XDG_CONFIG_HOME` else `%USERPROFILE%\.config\micromanager\config.json` (not `%APPDATA%` — the Swift convention won) |
+| `Sources/WLKit/KeyBindings.swift` | Core | Studio config: `XDG_CONFIG_HOME` else `%USERPROFILE%\.config\creator-micro-studio\config.json`; reads the old `micromanager` path as a migration fallback |
 | `Sources/WLKit/KeymapManager.swift` | Core | reads/writes keymap over RPC; no OS keymap |
 | `Sources/WLKit/PadEmulator.swift` | Core | in-process, zero OS dependency — port first, develop without hardware |
 | `Sources/WLKit/AnsiHTML.swift` | Core | pure |
@@ -48,7 +113,7 @@ Goal: an MVP tray app for Windows 11 that does what the macOS menu-bar app does 
 
 Tests to port (they are the spec): `PadEmulatorTests`, `StatusMapperTests`, `KeyBindingsTests`, `KeymapManagerTests`, `HerdrTabCycleTests`, `GitButlerLandPlanTests`, `AnsiHTMLTests`. Live tests (`LiveHerdrTests`, `LiveDeviceTests`, `LiveGitButlerTests`) skip without hardware/socket — same behavior on Windows. Reuse `Tests/WLKitTests/Fixtures/stock-keymap.json` directly via relative path.
 
-## What must be rebuilt (`src/MicroManager.App`, MAUI net10.0-windows)
+## What must be rebuilt (`src/CreatorMicroStudio.App`, MAUI net10.0-windows)
 
 - Tray icon: MAUI has no tray API → `H.NotifyIcon.Maui` NuGet package; pad state (dimmed/off, coloured dot, missing/badge)
 - Agent keys: full colour semantics incl. breathing blocked state; key press → `agent.focus` → bring terminal forward
@@ -69,11 +134,13 @@ Windows-specific gotchas:
 
 ```
 windows/
-  MicroManager.sln
-  src/MicroManager.Core/            net10.0 — protocol, Herdr client, emulator, mappers
-  src/MicroManager.App/             net10.0-windows MAUI — tray, panels, emulator window
-  src/MicroManager.Transport.Winrt/ net10.0-windows — WinRT HID transport (vendor usage page 0xFF00)
-  tests/MicroManager.Core.Tests/    xUnit — ported WLKitTests
+  AbesWorkLouderCreatorMicroStudio.Windows.sln
+  src/CreatorMicroStudio.Core/            net10.0 — protocol, Herdr client, emulator, mappers
+  src/CreatorMicroStudio.App/             net10.0-windows MAUI — tray, panels, emulator window
+  src/CreatorMicroStudio.Transport.Winrt/ net10.0-windows — WinRT HID transport (vendor usage page 0xFF00)
+  src/CreatorMicroStudio.Console/         hardware smoke test
+  src/CreatorMicroStudio.HidSpike/        transport probe
+  tests/CreatorMicroStudio.Core.Tests/    xUnit — ported WLKitTests
   build.ps1 / publish.ps1           optional zip packaging scripts
 ```
 
@@ -103,7 +170,7 @@ MAUI tray app per the "What must be rebuilt" list. Run against real Herdr + real
 
 ## Phase 3 — Parity
 
-Stack float window, land panel, emulator window, Inspector (deferrable), wide-key default, packaging (unpackaged zip v1; MSIX + cert later), `windows-latest` CI job publishing `MicroManager-win-x64.zip` as an extra artifact. Do **not** touch the existing macOS release workflow.
+Stack float window, land panel, emulator window, Inspector (deferrable), wide-key default, packaging (unpackaged zip v1; MSIX + cert later), `windows-latest` CI job publishing `AbesWorkLouderCreatorMicroStudio-win-x64.zip` as an extra artifact. Do **not** touch the existing macOS release workflow.
 
 ## Phase 4 — Bluetooth
 
@@ -156,8 +223,8 @@ Open an issue on the owner's repo proposing the `windows/` subdirectory before P
 ```powershell
 git clone <repo>
 cd <repo>/windows
-dotnet build src/MicroManager.Core
-dotnet test tests/MicroManager.Core.Tests
+dotnet build src/CreatorMicroStudio.Core
+dotnet test tests/CreatorMicroStudio.Core.Tests
 ```
 
 Branch: `windows-port`, sync between Mac and Windows via git.

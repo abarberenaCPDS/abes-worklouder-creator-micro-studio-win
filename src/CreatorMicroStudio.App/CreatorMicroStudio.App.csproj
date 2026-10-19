@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>AbesWorkLouderCreatorMicroStudio.Windows</RootNamespace>
+    <AssemblyName>AbesWorkLouderCreatorMicroStudio.Windows</AssemblyName>
+    <ApplicationTitle>Abe's WorkLouder Creator Micro Studio for Windows</ApplicationTitle>
+    <ApplicationId>dev.abeisonai.worklouder.creatormicrostudio.windows</ApplicationId>
+    <ApplicationIcon>Resources\Images\studio_icon.ico</ApplicationIcon>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <WindowsSdkPackageVersion>10.0.22621.38</WindowsSdkPackageVersion>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
+    <WindowsPackageType>None</WindowsPackageType>
+    <!-- The CsWinRT AOT source generator emits unsafe code into the project,
+         so any change to the app's sources re-emits a file that will not
+         compile without this. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <MauiIcon Include="Resources\Images\studio_icon.png" />
+    <MauiSplashScreen Include="Resources\appicon.svg" Color="#101827" BaseSize="256" />
+    <MauiAsset Include="Resources\Images\studio_icon.ico" LogicalName="Images\studio_icon.ico" />
+    <MauiAsset Include="Resources\Images\studio_icon.png" LogicalName="Resources\Images\studio_icon.png" />
+    <MauiImage Include="Resources\Images\*" Exclude="Resources\Images\studio_icon.png;Resources\Images\studio_icon.ico" />
+    <MauiFont Include="Resources\Fonts\*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="10.0.10" />
+    <PackageReference Include="H.NotifyIcon.Maui" Version="2.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CreatorMicroStudio.Core\CreatorMicroStudio.Core.csproj" />
+    <ProjectReference Include="..\CreatorMicroStudio.Transport.Winrt\CreatorMicroStudio.Transport.Winrt.csproj" />
+  </ItemGroup>
+
+</Project>

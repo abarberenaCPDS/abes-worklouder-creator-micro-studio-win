@@ -1,12 +1,51 @@
 # Changelog
 
-The Windows port follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html),
+The Windows Studio follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html),
 and this file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 The version lives in `Directory.Build.props` and is surfaced by the app and the
 console harness, so there is nothing else to keep in step.
 
 ## [Unreleased]
+
+## [0.4.0] - 2026-10-19
+
+### Added
+
+- Configurable host-side actions for pad keys, dial and joystick, with a physical
+  Controls map, grouped input editor, bulk apply/reset, test, and profile-aware
+  availability notes. Actions are host-side and do not rewrite the device keymap.
+- Herdr actions for tabs/workspaces, pane focus/zoom, prompts, key injection,
+  effort/model controls and Herdr CLI commands. CLI placeholders and ask prompts
+  resolve at press time, and arguments are launched directly without a shell.
+- Windows system actions for shortcuts, scrolling, media keys, typing, Voice
+  Typing (`Win+H`), open targets and configured PowerShell commands. Hardware/
+  OS limitations report clearly (for example dial push may not emit AG19).
+- A Studio sidebar with Studio, Controls, Lighting, Herdr and Inspector pages.
+- Persistent Studio lighting preferences with preview, debounce-save, Save now,
+  Revert and Restore defaults. Inspector/manual paints remain temporary; leaving
+  Inspector hands the pad back to Studio's saved look.
+- A Windows app/executable, splash and tray icon based on the Creator Micro 2
+  artwork. Regenerate the multi-size `.ico` with `scripts/Generate-StudioIcon.ps1`.
+
+### Changed
+
+- Default prompts no longer mention GitButler. The former stack/land keys now
+  default to Focus Agent and can be assigned any supported action in Controls.
+- Rebranded as **Abe's WorkLouder Creator Micro Studio for Windows**. Renamed
+  the solution, project folders, assemblies and C# namespaces to the
+  `AbesWorkLouderCreatorMicroStudio.Windows.*` identity. Existing
+  `MICROMANAGER_*` environment variables remain compatibility aliases.
+- Studio settings now live in `creator-micro-studio/config.json`; the previous
+  `micromanager/config.json` path is read as a fallback and migrates on first
+  write without deleting the original.
+
+### Fixed
+
+- Herdr CLI actions from a WSL-backed Studio now resolve `WL_HERDR_PATH` (including
+  `~`) inside the selected distro and invoke the executable by absolute path.
+  Previously `env herdr` relied on WSL's noninteractive `PATH`, which omitted
+  `~/.local/bin` and produced “env herdr: no such file or directory.”
 
 ## [0.3.0] - 2026-10-16
 
@@ -100,7 +139,7 @@ console harness, so there is nothing else to keep in step.
   individually.
 - MAUI tray app: generated tray icon, live tooltip, context menu (show/hide,
   toggle bridge, exit) and left-click to toggle the window.
-- Console hardware harness (`MicroManager.Console`) that probes the pad and
+- Console hardware harness (`CreatorMicroStudio.Console`) that probes the pad and
   applies the keymap.
 - In-process pad emulator, reachable with `MICROMANAGER_EMULATOR=1`.
 - Semantic versioning for the port, from a single `Directory.Build.props`.

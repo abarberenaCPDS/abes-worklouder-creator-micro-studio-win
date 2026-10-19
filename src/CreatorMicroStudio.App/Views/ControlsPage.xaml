@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+              x:Class="AbesWorkLouderCreatorMicroStudio.Windows.Views.ControlsPage">
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="18">
+            <VerticalStackLayout Spacing="4">
+                <Label Text="Controls" FontSize="28" FontAttributes="Bold" />
+                <Label Text="Choose what each physical input does. Changes are saved as host-side action overrides; the device keymap is not edited."
+                       TextColor="#AEB8C7" />
+            </VerticalStackLayout>
+
+            <Border Padding="16" Stroke="#344155" StrokeShape="RoundRectangle 10">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Physical map" FontSize="18" FontAttributes="Bold" />
+                    <Label Text="Key labels show the physical left-to-right order. The top row is reversed on the device: input 1 is left, input 0 is right."
+                           FontSize="12" TextColor="#AEB8C7" />
+                    <VerticalStackLayout Spacing="7"
+                                         BindableLayout.ItemsSource="{Binding PhysicalRows}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate>
+                                <HorizontalStackLayout Spacing="7" HorizontalOptions="Center"
+                                                       BindableLayout.ItemsSource="{Binding .}">
+                                    <BindableLayout.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Command="{Binding ToggleCommand}" TextColor="White" Padding="12,8" MinimumWidthRequest="70">
+                                                <Button.Text>
+                                                    <MultiBinding StringFormat="{}{0}  AG{1} · {2}">
+                                                        <Binding Path="SelectionMark" />
+                                                        <Binding Path="Id" />
+                                                        <Binding Path="ShortName" />
+                                                    </MultiBinding>
+                                                </Button.Text>
+                                            </Button>
+                                        </DataTemplate>
+                                    </BindableLayout.ItemTemplate>
+                                </HorizontalStackLayout>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="18" Margin="0,8,0,0">
+                        <VerticalStackLayout Grid.Column="0" Spacing="8">
+                            <Label Text="Dial" FontAttributes="Bold" />
+                            <Button Text="{Binding DialRight.ShortName, StringFormat='AG13 · {0}'}" Command="{Binding DialRight.ToggleCommand}" />
+                            <Button Text="{Binding DialLeft.ShortName, StringFormat='AG14 · {0}'}" Command="{Binding DialLeft.ToggleCommand}" />
+                            <Button Text="{Binding DialPush.ShortName, StringFormat='AG19 · {0}'}" Command="{Binding DialPush.ToggleCommand}" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="8">
+                            <Label Text="Joystick" FontAttributes="Bold" />
+                            <Button Text="{Binding JoystickNorth.ShortName, StringFormat='AG15 · {0}'}" Command="{Binding JoystickNorth.ToggleCommand}" />
+                            <HorizontalStackLayout Spacing="6" HorizontalOptions="Center">
+                                <Button Text="{Binding JoystickWest.ShortName, StringFormat='AG16 · {0}'}" Command="{Binding JoystickWest.ToggleCommand}" FontSize="11" Padding="8,8" />
+                                <Button Text="{Binding JoystickEast.ShortName, StringFormat='AG18 · {0}'}" Command="{Binding JoystickEast.ToggleCommand}" FontSize="11" Padding="8,8" />
+                            </HorizontalStackLayout>
+                            <Button Text="{Binding JoystickSouth.ShortName, StringFormat='AG17 · {0}'}" Command="{Binding JoystickSouth.ToggleCommand}" />
+                        </VerticalStackLayout>
+                    </Grid>
+                    <Label Text="Dial push and joystick inputs depend on the active firmware/profile. They may not emit input events on every device profile."
+                           FontSize="11" TextColor="#D6AD55" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Padding="16" Stroke="#344155" StrokeShape="RoundRectangle 10">
+                <VerticalStackLayout Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                        <Label Text="Inputs" FontSize="18" FontAttributes="Bold" VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="Select all" Command="{Binding SelectAllCommand}" FontSize="12" Padding="10,5" />
+                        <Button Grid.Column="2" Text="Clear" Command="{Binding ClearSelectionCommand}" FontSize="12" Padding="10,5" />
+                    </Grid>
+                    <Label Text="{Binding CustomizedSummary}" FontSize="11" TextColor="#AEB8C7" />
+                    <Label Text="Tap an input to toggle it in the selection. Select one to edit or test; select several to apply or reset in bulk."
+                           FontSize="12" TextColor="#AEB8C7" />
+                    <Label Text="{Binding SelectionSummary}" FontAttributes="Bold" />
+
+                    <VerticalStackLayout Spacing="12" BindableLayout.ItemsSource="{Binding Groups}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate>
+                                <VerticalStackLayout Spacing="5">
+                                    <Label Text="{Binding Title}" FontAttributes="Bold" TextColor="#73B8FF" Margin="0,6,0,0" />
+                                    <VerticalStackLayout Spacing="4" BindableLayout.ItemsSource="{Binding Items}">
+                                        <BindableLayout.ItemTemplate>
+                                            <DataTemplate>
+                                                <VerticalStackLayout Spacing="2">
+                                                    <Button Command="{Binding ToggleCommand}" Padding="10,7" HorizontalOptions="Fill">
+                                                        <Button.Text>
+                                                            <MultiBinding StringFormat="{}{0}  AG{1}  ·  {2}  ({3})">
+                                                                <Binding Path="SelectionMark" />
+                                                                <Binding Path="Id" />
+                                                                <Binding Path="ActionSummary" />
+                                                                <Binding Path="ActionState" />
+                                                            </MultiBinding>
+                                                        </Button.Text>
+                                                    </Button>
+                                                    <Label Text="{Binding CapabilityStatus}" IsVisible="{Binding CapabilityDependent}"
+                                                           FontSize="10" TextColor="#D6AD55" Margin="8,0,0,3" />
+                                                </VerticalStackLayout>
+                                            </DataTemplate>
+                                        </BindableLayout.ItemTemplate>
+                                    </VerticalStackLayout>
+                                </VerticalStackLayout>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <Border Padding="16" Stroke="#344155" StrokeShape="RoundRectangle 10">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Action editor" FontSize="18" FontAttributes="Bold" />
+                    <Grid ColumnDefinitions="115,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="10" RowSpacing="8">
+                        <Label Text="Action" VerticalOptions="Center" />
+                        <Picker Grid.Column="1" ItemsSource="{Binding ActionKinds}" SelectedItem="{Binding SelectedActionKind}" />
+
+                        <Label Grid.Row="1" Text="Slot" IsVisible="{Binding IsSlotVisible}" VerticalOptions="Center" />
+                        <Entry Grid.Row="1" Grid.Column="1" Text="{Binding Slot}" IsVisible="{Binding IsSlotVisible}"
+                               Keyboard="Numeric" Placeholder="1–6" />
+
+                        <Label Grid.Row="2" Text="Direction" IsVisible="{Binding IsDirectionVisible}" VerticalOptions="Center" />
+                        <Picker Grid.Row="2" Grid.Column="1" ItemsSource="{Binding Directions}" SelectedItem="{Binding SelectedDirection}"
+                                IsVisible="{Binding IsDirectionVisible}" />
+
+                        <Label Grid.Row="3" Text="Amount" IsVisible="{Binding IsAmountVisible}" VerticalOptions="Center" />
+                        <Entry Grid.Row="3" Grid.Column="1" Text="{Binding Amount}" IsVisible="{Binding IsAmountVisible}"
+                               Keyboard="Numeric" Placeholder="1–20 lines" />
+
+                        <Label Grid.Row="4" Text="Media key" IsVisible="{Binding IsMediaVisible}" VerticalOptions="Center" />
+                        <Picker Grid.Row="4" Grid.Column="1" ItemsSource="{Binding MediaKeys}" SelectedItem="{Binding SelectedMediaKey}"
+                                IsVisible="{Binding IsMediaVisible}" />
+                    </Grid>
+
+                    <VerticalStackLayout Spacing="4" IsVisible="{Binding IsValueVisible}">
+                        <Label Text="{Binding ValueFieldLabel}" />
+                        <Editor Text="{Binding Value}" Placeholder="{Binding ValueFieldPlaceholder}" AutoSize="TextChanges"
+                                MinimumHeightRequest="70" />
+                        <Label Text="Keys and shortcuts use the host action syntax, for example ctrl+c esc."
+                               FontSize="11" TextColor="#AEB8C7" IsVisible="{Binding IsKeysValue}" />
+                    </VerticalStackLayout>
+
+                    <HorizontalStackLayout Spacing="8">
+                        <Button Text="Apply to selected" Command="{Binding ApplyCommand}" />
+                        <Button Text="Reset default" Command="{Binding ResetCommand}" />
+                        <Button Text="Test" Command="{Binding TestCommand}" />
+                    </HorizontalStackLayout>
+                    <Label Text="{Binding Status}" FontSize="12" TextColor="#AEB8C7" />
+                </VerticalStackLayout>
+            </Border>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentView>
