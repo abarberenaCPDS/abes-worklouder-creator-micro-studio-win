@@ -50,6 +50,9 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
             input => Groups.SelectMany(group => group.Items).Single(item => item.Id == input.Id));
         PhysicalRows = Pad.DisplayRows.Select(row => (IReadOnlyList<ControlsInputViewModel>)row
             .Select(id => byId[id]).ToArray()).ToArray();
+        KeyInputs = Pad.DisplayRows.SelectMany(row => row)
+            .Where(id => byId[id].Input.Group == PadInputGroup.Keys)
+            .Select(id => byId[id]).ToArray();
         DialInputs = Pad.Inputs.Where(input => input.Group == PadInputGroup.Dial).Select(input => byId[input.Id]).ToArray();
         JoystickInputs = new[] { Pad.JoyNorthId, Pad.JoyWestId, Pad.JoySouthId, Pad.JoyEastId }
             .Select(id => byId[id]).ToArray();
@@ -81,6 +84,7 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
 
     public ObservableCollection<ControlsInputGroupViewModel> Groups { get; } = new();
     public IReadOnlyList<IReadOnlyList<ControlsInputViewModel>> PhysicalRows { get; }
+    public IReadOnlyList<ControlsInputViewModel> KeyInputs { get; }
     public IReadOnlyList<ControlsInputViewModel> DialInputs { get; }
     public IReadOnlyList<ControlsInputViewModel> JoystickInputs { get; }
     public ControlsInputViewModel DialRight => DialInputs.Single(input => input.Id == Pad.DialClockwiseId);
@@ -113,6 +117,21 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
     };
     public string CustomizedSummary =>
         $"{Groups.SelectMany(group => group.Items).Count(input => input.Customized)} customized";
+    public bool HasCapabilityWarnings => Groups.SelectMany(group => group.Items)
+        .Any(input => input.CapabilityDependent && !input.Available);
+    public string CapabilitySummary
+    {
+        get
+        {
+            var unavailable = Groups.SelectMany(group => group.Items)
+                .Where(input => input.CapabilityDependent && !input.Available)
+                .Select(input => input.Name)
+                .ToArray();
+            return unavailable.Length == 0
+                ? string.Empty
+                : $"Unavailable on this pad profile: {string.Join(", ", unavailable)}.";
+        }
+    }
 
     /// <summary>The selected input ids, as the pad map's <c>Selection</c> binding.</summary>
     public IReadOnlyList<int> SelectionIds => SelectedInputs.Select(input => input.Id).ToArray();
@@ -435,6 +454,8 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
         {
             foreach (var input in Groups.SelectMany(group => group.Items))
                 input.Available = available.Contains(input.Id);
+            OnPropertyChanged(nameof(HasCapabilityWarnings));
+            OnPropertyChanged(nameof(CapabilitySummary));
         });
     }
 

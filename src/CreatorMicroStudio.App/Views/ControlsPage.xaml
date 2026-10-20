@@ -4,177 +4,211 @@
              xmlns:controls="clr-namespace:AbesWorkLouderCreatorMicroStudio.Windows.Controls"
              x:Class="AbesWorkLouderCreatorMicroStudio.Windows.Views.ControlsPage">
     <ScrollView>
-        <VerticalStackLayout Padding="24" Spacing="18">
-            <VerticalStackLayout Spacing="4">
-                <Label Text="Controls" Style="{StaticResource PageTitle}" />
-                <Label Text="Choose what each physical input does. Changes are host-side action overrides; the device keymap is not edited."
-                       Style="{StaticResource PageSubtitle}" />
-                <Label Text="{Binding Status}" Style="{StaticResource CaptionLabel}" Margin="0,4,0,0" />
-            </VerticalStackLayout>
-
-            <Grid ColumnDefinitions="440,*" ColumnSpacing="18">
-                <!-- Left: physical map and the action editor for the selection. -->
-                <VerticalStackLayout Grid.Column="0" Spacing="18" VerticalOptions="Start">
-                    <Border Style="{StaticResource Card}">
-                        <VerticalStackLayout Spacing="12">
-                            <Label Text="Physical map" Style="{StaticResource CardEyebrow}" />
-                            <controls:PadMapView x:Name="PadMap"
-                                                 HeightRequest="300"
-                                                 Selection="{Binding SelectionIds}"
-                                                 Bindings="{Binding Bindings}"
-                                                 AgentNames="{Binding AgentNames}"
-                                                 KeyColors="{Binding KeyColors}" />
-                            <Label Text="Tap an input on the map to select it. Key labels follow the physical left-to-right order: the top row is reversed on the device, so input 1 is left and input 0 is right."
-                                   Style="{StaticResource CaptionLabel}" />
-                        </VerticalStackLayout>
-                    </Border>
-
-                    <Border Style="{StaticResource Card}">
-                        <VerticalStackLayout Spacing="12">
-                            <Label Text="Action editor" Style="{StaticResource CardEyebrow}" />
-                            <Label Text="{Binding SelectedTitle}" Style="{StaticResource SectionTitle}" />
-                            <Label Text="{Binding SelectedSubtitle}" Style="{StaticResource CaptionLabel}" />
-                            <BoxView Style="{StaticResource StudioDivider}" />
-
-                            <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto"
-                                  ColumnSpacing="10" RowSpacing="8">
-                                <Label Text="Action" Style="{StaticResource FieldLabel}" />
-                                <Picker Grid.Column="1"
-                                        ItemsSource="{Binding ActionKinds}"
-                                        SelectedItem="{Binding SelectedActionKind}"
-                                        Style="{StaticResource StudioPicker}" />
-
-                                <Label Grid.Row="1" Text="Slot" IsVisible="{Binding IsSlotVisible}"
-                                       Style="{StaticResource FieldLabel}" />
-                                <Entry Grid.Row="1" Grid.Column="1" Text="{Binding Slot}"
-                                       IsVisible="{Binding IsSlotVisible}"
-                                       Keyboard="Numeric" Placeholder="1–6"
-                                       Style="{StaticResource StudioEntry}" />
-
-                                <Label Grid.Row="2" Text="Direction" IsVisible="{Binding IsDirectionVisible}"
-                                       Style="{StaticResource FieldLabel}" />
-                                <Picker Grid.Row="2" Grid.Column="1"
-                                        ItemsSource="{Binding Directions}"
-                                        SelectedItem="{Binding SelectedDirection}"
-                                        IsVisible="{Binding IsDirectionVisible}"
-                                        Style="{StaticResource StudioPicker}" />
-
-                                <Label Grid.Row="3" Text="Amount" IsVisible="{Binding IsAmountVisible}"
-                                       Style="{StaticResource FieldLabel}" />
-                                <Entry Grid.Row="3" Grid.Column="1" Text="{Binding Amount}"
-                                       IsVisible="{Binding IsAmountVisible}"
-                                       Keyboard="Numeric" Placeholder="1–20 lines"
-                                       Style="{StaticResource StudioEntry}" />
-
-                                <Label Grid.Row="4" Text="Media key" IsVisible="{Binding IsMediaVisible}"
-                                       Style="{StaticResource FieldLabel}" />
-                                <Picker Grid.Row="4" Grid.Column="1"
-                                        ItemsSource="{Binding MediaKeys}"
-                                        SelectedItem="{Binding SelectedMediaKey}"
-                                        IsVisible="{Binding IsMediaVisible}"
-                                        Style="{StaticResource StudioPicker}" />
-                            </Grid>
-
-                            <VerticalStackLayout Spacing="6" IsVisible="{Binding IsValueVisible}">
-                                <Label Text="{Binding ValueFieldLabel}" Style="{StaticResource FieldLabel}" />
-                                <Editor Text="{Binding Value}"
-                                        Placeholder="{Binding ValueFieldPlaceholder}"
-                                        AutoSize="TextChanges"
-                                        MinimumHeightRequest="70"
-                                        Style="{StaticResource StudioEditor}" />
-                                <Label Text="Keys and shortcuts use the host action syntax, for example ctrl+c esc."
-                                       IsVisible="{Binding IsKeysValue}"
-                                       Style="{StaticResource CaptionLabel}" />
-                            </VerticalStackLayout>
-
-                            <BoxView Style="{StaticResource StudioDivider}" />
-
-                            <HorizontalStackLayout Spacing="8">
-                                <Button Text="Apply to selected" Command="{Binding ApplyCommand}"
-                                        Style="{StaticResource PrimaryButton}" />
-                                <Button Text="Reset default" Command="{Binding ResetCommand}"
-                                        Style="{StaticResource SecondaryButton}" />
-                                <Button Text="Test" Command="{Binding TestCommand}"
-                                        Style="{StaticResource GhostButton}" />
-                            </HorizontalStackLayout>
-
-                            <Label Text="{Binding Status}" Style="{StaticResource CaptionLabel}" />
-                        </VerticalStackLayout>
-                    </Border>
+        <VerticalStackLayout Padding="24" Spacing="16">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="Controls" Style="{StaticResource PageTitle}" />
+                    <Label Text="Choose an input on the pad or by name, then edit the action it runs."
+                           Style="{StaticResource PageSubtitle}" />
                 </VerticalStackLayout>
+                <Border Grid.Column="1" Style="{StaticResource TightCard}" Padding="12,7"
+                        VerticalOptions="Center">
+                    <VerticalStackLayout Spacing="2">
+                        <Label Text="{Binding CustomizedSummary}" Style="{StaticResource ValueLabel}"
+                               HorizontalTextAlignment="End" />
+                        <Label Text="custom actions" Style="{StaticResource CaptionLabel}"
+                               HorizontalTextAlignment="End" />
+                    </VerticalStackLayout>
+                </Border>
+            </Grid>
 
-                <!-- Right: every input, grouped the way the pad reads. -->
-                <Border Grid.Column="1" Style="{StaticResource Card}" VerticalOptions="Start">
+            <Grid ColumnDefinitions="1.12*,0.95*" ColumnSpacing="16" RowDefinitions="Auto">
+                <!-- The pad is the primary selector; named groups provide an alternate path. -->
+                <Border Grid.Column="0" Style="{StaticResource Card}">
                     <VerticalStackLayout Spacing="12">
-                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-                            <VerticalStackLayout Spacing="2" VerticalOptions="Center">
-                                <Label Text="Inputs" Style="{StaticResource CardEyebrow}" />
-                                <Label Text="{Binding CustomizedSummary}" Style="{StaticResource CaptionLabel}" />
-                            </VerticalStackLayout>
-                            <Button Grid.Column="1" Text="Select all" Command="{Binding SelectAllCommand}"
-                                    Style="{StaticResource ChipButton}" />
-                            <Button Grid.Column="2" Text="Clear" Command="{Binding ClearSelectionCommand}"
-                                    Style="{StaticResource ChipButton}" />
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Label Text="Choose a physical input" Style="{StaticResource CardEyebrow}"
+                                   VerticalOptions="Center" />
+                            <Label Grid.Column="1" Text="Click to select" Style="{StaticResource CaptionLabel}"
+                                   VerticalOptions="Center" />
                         </Grid>
-
-                        <Label Text="Tap an input to toggle it in the selection. Select one to edit or test; select several to apply or reset in bulk."
-                               Style="{StaticResource CaptionLabel}" />
-                        <Label Text="{Binding SelectionSummary}" Style="{StaticResource AccentLabel}" />
+                        <controls:PadMapView x:Name="PadMap"
+                                             HeightRequest="340"
+                                             Selection="{Binding SelectionIds}"
+                                             Bindings="{Binding Bindings}"
+                                             AgentNames="{Binding AgentNames}"
+                                             KeyColors="{Binding KeyColors}" />
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="{Binding SelectionSummary}" Style="{StaticResource AccentLabel}" />
+                                <Label Text="{Binding SelectedSubtitle}" Style="{StaticResource CaptionLabel}"
+                                       LineBreakMode="WordWrap" />
+                            </VerticalStackLayout>
+                            <Label Grid.Column="1" Text="{Binding SelectedCount, StringFormat='{0} selected'}"
+                                   Style="{StaticResource CaptionLabel}" VerticalOptions="Center" />
+                        </Grid>
                         <BoxView Style="{StaticResource StudioDivider}" />
 
-                        <VerticalStackLayout Spacing="14" BindableLayout.ItemsSource="{Binding Groups}">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <VerticalStackLayout Spacing="2">
+                                <Label Text="Quick select" Style="{StaticResource CardEyebrow}" />
+                                <Label Text="Select by name when the pad position is unclear."
+                                       Style="{StaticResource CaptionLabel}" />
+                            </VerticalStackLayout>
+                            <HorizontalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Center">
+                                <Button Text="Select all" Command="{Binding SelectAllCommand}"
+                                        Style="{StaticResource ChipButton}" />
+                                <Button Text="Clear" Command="{Binding ClearSelectionCommand}"
+                                        Style="{StaticResource ChipButton}" />
+                            </HorizontalStackLayout>
+                        </Grid>
+
+                        <Label Text="Keys" Style="{StaticResource FieldLabel}" />
+                        <FlexLayout Direction="Row" Wrap="Wrap" AlignContent="Start" AlignItems="Start"
+                                    BindableLayout.ItemsSource="{Binding KeyInputs}">
                             <BindableLayout.ItemTemplate>
                                 <DataTemplate>
-                                    <VerticalStackLayout Spacing="7">
-                                        <Label Text="{Binding Title}" Style="{StaticResource CardEyebrow}" />
-                                        <VerticalStackLayout Spacing="6" BindableLayout.ItemsSource="{Binding Items}">
-                                            <BindableLayout.ItemTemplate>
-                                                <DataTemplate>
-                                                    <VerticalStackLayout Spacing="3">
-                                                        <Border Style="{StaticResource InnerRow}">
-                                                            <Border.GestureRecognizers>
-                                                                <TapGestureRecognizer Command="{Binding ToggleCommand}" />
-                                                            </Border.GestureRecognizers>
-                                                            <Border.Triggers>
-                                                                <DataTrigger TargetType="Border"
-                                                                             Binding="{Binding IsSelected}"
-                                                                             Value="True">
-                                                                    <Setter Property="BackgroundColor"
-                                                                            Value="{StaticResource StudioSelection}" />
-                                                                    <Setter Property="Stroke"
-                                                                            Value="{StaticResource StudioBorderStrong}" />
-                                                                </DataTrigger>
-                                                            </Border.Triggers>
-                                                            <Grid ColumnDefinitions="4,*" ColumnSpacing="10">
-                                                                <BoxView Color="{StaticResource StudioAccent}"
-                                                                         IsVisible="{Binding IsSelected}"
-                                                                         CornerRadius="2"
-                                                                         VerticalOptions="Fill" />
-                                                                <VerticalStackLayout Grid.Column="1" Spacing="2">
-                                                                    <Label Style="{StaticResource ValueLabel}">
-                                                                        <Label.Text>
-                                                                            <MultiBinding StringFormat="{}{0}  AG{1}  ·  {2}  ({3})">
-                                                                                <Binding Path="SelectionMark" />
-                                                                                <Binding Path="Id" />
-                                                                                <Binding Path="ActionSummary" />
-                                                                                <Binding Path="ActionState" />
-                                                                            </MultiBinding>
-                                                                        </Label.Text>
-                                                                    </Label>
-                                                                    <Label Text="{Binding CapabilityStatus}"
-                                                                           IsVisible="{Binding CapabilityDependent}"
-                                                                           Style="{StaticResource StatusWarnLabel}" />
-                                                                </VerticalStackLayout>
-                                                            </Grid>
-                                                        </Border>
-                                                    </VerticalStackLayout>
-                                                </DataTemplate>
-                                            </BindableLayout.ItemTemplate>
-                                        </VerticalStackLayout>
-                                    </VerticalStackLayout>
+                                    <Button Text="{Binding Name}" AutomationProperties.Name="{Binding Name}"
+                                            AutomationProperties.HelpText="{Binding ActionSummary}"
+                                            Command="{Binding ToggleCommand}"
+                                            Style="{StaticResource ChipButton}"
+                                            WidthRequest="88" HeightRequest="38" Padding="6,0"
+                                            Margin="0,0,6,6">
+                                        <Button.Triggers>
+                                            <DataTrigger TargetType="Button" Binding="{Binding IsSelected}" Value="True">
+                                                <Setter Property="BackgroundColor" Value="{StaticResource StudioSelection}" />
+                                                <Setter Property="BorderColor" Value="{StaticResource StudioAccent}" />
+                                                <Setter Property="TextColor" Value="{StaticResource StudioText}" />
+                                            </DataTrigger>
+                                        </Button.Triggers>
+                                    </Button>
                                 </DataTemplate>
                             </BindableLayout.ItemTemplate>
+                        </FlexLayout>
+
+                        <Label Text="Dial" Style="{StaticResource FieldLabel}" />
+                        <FlexLayout Direction="Row" Wrap="Wrap" AlignContent="Start" AlignItems="Start"
+                                    BindableLayout.ItemsSource="{Binding DialInputs}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Text="{Binding ShortName}" AutomationProperties.Name="{Binding Name}"
+                                            AutomationProperties.HelpText="{Binding ActionSummary}"
+                                            Command="{Binding ToggleCommand}"
+                                            Style="{StaticResource ChipButton}"
+                                            HeightRequest="38" Padding="10,0" Margin="0,0,6,6">
+                                        <Button.Triggers>
+                                            <DataTrigger TargetType="Button" Binding="{Binding IsSelected}" Value="True">
+                                                <Setter Property="BackgroundColor" Value="{StaticResource StudioSelection}" />
+                                                <Setter Property="BorderColor" Value="{StaticResource StudioAccent}" />
+                                                <Setter Property="TextColor" Value="{StaticResource StudioText}" />
+                                            </DataTrigger>
+                                        </Button.Triggers>
+                                    </Button>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </FlexLayout>
+
+                        <Label Text="Joystick" Style="{StaticResource FieldLabel}" />
+                        <FlexLayout Direction="Row" Wrap="Wrap" AlignContent="Start" AlignItems="Start"
+                                    BindableLayout.ItemsSource="{Binding JoystickInputs}">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Text="{Binding ShortName}" AutomationProperties.Name="{Binding Name}"
+                                            AutomationProperties.HelpText="{Binding ActionSummary}"
+                                            Command="{Binding ToggleCommand}"
+                                            Style="{StaticResource ChipButton}"
+                                            HeightRequest="38" Padding="10,0" Margin="0,0,6,6">
+                                        <Button.Triggers>
+                                            <DataTrigger TargetType="Button" Binding="{Binding IsSelected}" Value="True">
+                                                <Setter Property="BackgroundColor" Value="{StaticResource StudioSelection}" />
+                                                <Setter Property="BorderColor" Value="{StaticResource StudioAccent}" />
+                                                <Setter Property="TextColor" Value="{StaticResource StudioText}" />
+                                            </DataTrigger>
+                                        </Button.Triggers>
+                                    </Button>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </FlexLayout>
+                        <Label Text="{Binding CapabilitySummary}"
+                               IsVisible="{Binding HasCapabilityWarnings}"
+                               Style="{StaticResource StatusWarnLabel}" />
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- A persistent details pane keeps the current action in view. -->
+                <Border Grid.Column="1" Style="{StaticResource Card}">
+                    <VerticalStackLayout Spacing="12">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                            <VerticalStackLayout Spacing="3">
+                                <Label Text="Action editor" Style="{StaticResource CardEyebrow}" />
+                                <Label Text="{Binding SelectedTitle}" Style="{StaticResource SectionTitle}" />
+                                <Label Text="{Binding SelectedSubtitle}" Style="{StaticResource CaptionLabel}"
+                                       LineBreakMode="WordWrap" />
+                            </VerticalStackLayout>
+                            <Border Grid.Column="1" Style="{StaticResource InnerRow}" Padding="9,5"
+                                    VerticalOptions="Start">
+                                <Label Text="{Binding SelectionSummary}" Style="{StaticResource CaptionLabel}"
+                                       LineBreakMode="TailTruncation" />
+                            </Border>
+                        </Grid>
+                        <BoxView Style="{StaticResource StudioDivider}" />
+
+                        <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto"
+                              ColumnSpacing="10" RowSpacing="9">
+                            <Label Text="Action" Style="{StaticResource FieldLabel}" />
+                            <Picker Grid.Column="1" ItemsSource="{Binding ActionKinds}"
+                                    SelectedItem="{Binding SelectedActionKind}"
+                                    Style="{StaticResource StudioPicker}" />
+
+                            <Label Grid.Row="1" Text="Agent slot" IsVisible="{Binding IsSlotVisible}"
+                                   Style="{StaticResource FieldLabel}" />
+                            <Entry Grid.Row="1" Grid.Column="1" Text="{Binding Slot}"
+                                   IsVisible="{Binding IsSlotVisible}" Keyboard="Numeric"
+                                   Placeholder="1–6" Style="{StaticResource StudioEntry}" />
+
+                            <Label Grid.Row="2" Text="Direction" IsVisible="{Binding IsDirectionVisible}"
+                                   Style="{StaticResource FieldLabel}" />
+                            <Picker Grid.Row="2" Grid.Column="1" ItemsSource="{Binding Directions}"
+                                    SelectedItem="{Binding SelectedDirection}"
+                                    IsVisible="{Binding IsDirectionVisible}"
+                                    Style="{StaticResource StudioPicker}" />
+
+                            <Label Grid.Row="3" Text="Amount" IsVisible="{Binding IsAmountVisible}"
+                                   Style="{StaticResource FieldLabel}" />
+                            <Entry Grid.Row="3" Grid.Column="1" Text="{Binding Amount}"
+                                   IsVisible="{Binding IsAmountVisible}" Keyboard="Numeric"
+                                   Placeholder="1–20 lines" Style="{StaticResource StudioEntry}" />
+
+                            <Label Grid.Row="4" Text="Media key" IsVisible="{Binding IsMediaVisible}"
+                                   Style="{StaticResource FieldLabel}" />
+                            <Picker Grid.Row="4" Grid.Column="1" ItemsSource="{Binding MediaKeys}"
+                                    SelectedItem="{Binding SelectedMediaKey}"
+                                    IsVisible="{Binding IsMediaVisible}"
+                                    Style="{StaticResource StudioPicker}" />
+                        </Grid>
+
+                        <VerticalStackLayout Spacing="6" IsVisible="{Binding IsValueVisible}">
+                            <Label Text="{Binding ValueFieldLabel}" Style="{StaticResource FieldLabel}" />
+                            <Editor Text="{Binding Value}"
+                                    Placeholder="{Binding ValueFieldPlaceholder}"
+                                    AutoSize="TextChanges" MinimumHeightRequest="92"
+                                    Style="{StaticResource StudioEditor}" />
+                            <Label Text="Keys and shortcuts use host action syntax, for example ctrl+c esc."
+                                   IsVisible="{Binding IsKeysValue}"
+                                   Style="{StaticResource CaptionLabel}" />
                         </VerticalStackLayout>
+
+                        <BoxView Style="{StaticResource StudioDivider}" />
+                        <Label Text="{Binding Status}" Style="{StaticResource CaptionLabel}"
+                               LineBreakMode="WordWrap" />
+                        <FlexLayout Direction="Row" Wrap="Wrap" AlignItems="Center">
+                            <Button Text="Apply to selected" Command="{Binding ApplyCommand}"
+                                    Style="{StaticResource PrimaryButton}" Margin="0,0,8,6" />
+                            <Button Text="Reset default" Command="{Binding ResetCommand}"
+                                    Style="{StaticResource SecondaryButton}" Margin="0,0,8,6" />
+                            <Button Text="Test" Command="{Binding TestCommand}"
+                                    Style="{StaticResource GhostButton}" Margin="0,0,8,6" />
+                        </FlexLayout>
                     </VerticalStackLayout>
                 </Border>
             </Grid>

@@ -52,6 +52,10 @@ remote rename is an external action and is not performed by this worktree.
   environment variables were replaced by `WL_*`. The repository was reduced to the
   Windows app: the macOS Swift reference tree was removed and the former
   `windows/` subtree became the repository root.
+- [x] UI follow-up — implemented the approved map-first Controls layout and
+  regrouped Lighting around the pad and selected key. The initial window now
+  opens taller and wider within the primary display; visual validation still
+  requires F5 on Windows.
 
 ### Verification so far
 

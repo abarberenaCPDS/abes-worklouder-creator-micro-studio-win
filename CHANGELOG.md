@@ -8,6 +8,11 @@ console harness, so there is nothing else to keep in step.
 
 ## [Unreleased]
 
+### Changed
+
+- Reworked Controls around the physical pad, grouped quick-select inputs, and a persistent action editor. Lighting now groups Keys at rest, the selected-key editor, status looks, and shared zones.
+- Increased the startup window size for the editing workspaces, capped to the primary display dimensions.
+
 ## [0.5.0] - 2026-10-19
 
 ### Added
