@@ -44,6 +44,13 @@ public sealed class KeyBindings : IEquatable<KeyBindings>
     public List<string> ClaudeModels { get; } = new();
     public List<string> ClaudeEfforts { get; } = new();
     public List<string> CodexModels { get; } = new();
+    /// The configured agent keys in physical reading order.  Absent from the
+    /// JSON file the default six‑key layout `[1,0,2,3,4,5]` is used.  An explicit
+    /// empty array `[]` means "no dedicated agent keys".  Invalid keys (>12 or <0)
+    /// or duplicates cause a fallback to the default layout.
+    /// This property is initialized from the JSON config on load; it is not
+    /// directly serialized — saving always goes through `SetAgentKeys`.
+    public List<int> AgentKeyIds { get; } = Pad.AgentKeyIds;
 
     /// What a turn of the dial does. Scrolling by default: a dial is the one
     /// control on the pad that is good at long output, and effort is one config

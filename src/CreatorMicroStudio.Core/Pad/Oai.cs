@@ -128,6 +128,34 @@ public static partial class Pad
 
     /// The rows as you look at the pad, for on-screen mirrors. `Rows` stays in
     /// firmware order because the keymap file is addressed that way.
+    public static readonly List<List<int>> PhysicalReadingOrderRows = new()
+    {
+        new() { 1, 0 },
+        new() { 2, 3, 4, 5 },
+        new() { 6, 7, 8, 9 },
+        new() { 10, 11, 12 },
+    };
+
+    /// The canonical reading order for agent keys, in physical pad layout order.
+    /// Normalizes any subset / superset of keys into this order, removing
+    /// duplicates and filtering only to configurable key IDs (0‑12). Returns null
+    /// when any key outside the supported range is present.
+    public static List<int> NormalizeAgentKeys(IEnumerable<int> keys)
+    {
+        var selected = new HashSet<int>(keys);
+        // validate range 0‑12 inclusive
+        if (selected.Any(k => k < 0 || k > 12)) return null;
+        // de‑dup and keep only keys that exist in PhysicalReadingOrderRows flattened
+        var flat = PhysicalReadingOrderRows.SelectMany(r => r).ToHashSet();
+        var normalized = selected.Where(k => flat.Contains(k)).Distinct().ToList();
+        // return them in PhysicalReadingOrderRows order
+        return normalized.Count > 0
+            ? PhysicalReadingOrderRows.SelectMany(r => r).Where(k => normalized.Contains(k)).ToList()
+            : null;
+    }
+
+    /// The rows as you look at the pad, for on-screen mirrors. `Rows` stays in
+    /// firmware order because the keymap file is addressed that way.
     public static readonly List<List<int>> DisplayRows = new()
     {
         new() { 1, 0 },
