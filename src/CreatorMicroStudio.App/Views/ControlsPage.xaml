@@ -86,6 +86,40 @@
                             </BindableLayout.ItemTemplate>
                         </FlexLayout>
 
+                        <!-- Agent Layout card: which keycaps are dedicated agent keys (physical reading order: [1,0,2,3,4,5,6,7,8,9,10,11,12]) -->
+                        <Border Style="{StaticResource Card}" Padding="12">
+                            <VerticalStackLayout Spacing="8">
+                                <Label Text="Agent Layout" Style="{StaticResource CardEyebrow}" />
+                                <Label Text="Select keycaps that focus Herdr agents. Default: [1,0,2,3,4,5]. Empty [] disables dedicated agent keys."
+                                       Style="{StaticResource CaptionLabel}" />
+                                <!--- Current configuration --->
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
+                                    <Label Text="Current:" Style="{StaticResource SmallLabel}" />
+                                    <Label Text="{Binding AgentKeyIds, StringFormat='[{string.Join(',', .)}]'}"
+                                           Style="{StaticResource ValueLabel}" />
+                                </Grid>
+                                <!--- Action buttons --->
+                                <HorizontalStackLayout Spacing="6" VerticalOptions="CenterAndAlign">
+                                    <!--- Select all agent keys (sets to default [1,0,2,3,4,5]) --->
+                                    <Button Text="Select all agent keys" Command="{Binding SelectAllAgentKeysCommand}"
+                                            Style="{StaticResource ChipButton}" />
+                                    <!--- Clear agent keys (sets to []) --->
+                                    <Button Text="Clear agent keys" Command="{Binding ClearAgentKeysCommand}"
+                                            Style="{StaticResource ChipButton}" />
+                                </HorizontalStackLayout>
+                                <!--- Apply / Reset --->
+                                <HorizontalStackLayout Spacing="6" VerticalOptions="CenterAndAlign">
+                                    <Button Text="Apply" Command="{Binding ApplyAgentKeysCommand}"
+                                            Style="{StaticResource PrimaryButton}" Margin="0,0,8,6" />
+                                    <Button Text="Reset" Command="{Binding ResetAgentKeysCommand}"
+                                            Style="{StaticResource SecondaryButton}" Margin="0,0,8,6" />
+                                </HorizontalStackLayout>
+                                <!--- Status --->
+                                <Label Text="{Binding AgentKeyStatus}"
+                                       Style="{StaticResource StatusWarnLabel}" />
+                            </VerticalStackLayout>
+                        </Border>
+
                         <Label Text="Dial" Style="{StaticResource FieldLabel}" />
                         <FlexLayout Direction="Row" Wrap="Wrap" AlignContent="Start" AlignItems="Start"
                                     BindableLayout.ItemsSource="{Binding DialInputs}">

@@ -26,6 +26,12 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
     private IReadOnlyDictionary<int, Color> _keyColors = new Dictionary<int, Color>();
     private IReadOnlyList<string> _agentNames = Array.Empty<string>();
 
+    // Agent layout configuration (physical reading order: 1,0,2,3,4,5,6,7,8,9,10,11,12)
+    private readonly List<int> _defaultAgentKeyIds = new() { 1, 0, 2, 3, 4, 5 };
+    private List<int> _agentKeyIds;
+    private List<int> _draftAgentKeyIds;
+    private bool _agentChangesPending;
+
     public ControlsViewModel(IBridgeService bridge)
     {
         _bridge = bridge;
@@ -57,6 +63,10 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
         JoystickInputs = new[] { Pad.JoyNorthId, Pad.JoyWestId, Pad.JoySouthId, Pad.JoyEastId }
             .Select(id => byId[id]).ToArray();
 
+        // Initialize agent key configuration from bindings (or defaults)
+        AgentKeyIds = _bridge.Bindings.AgentKeyIds ?? new List<int>(_defaultAgentKeyIds);
+        DraftAgentKeyIds = new List<int>(AgentKeyIds);
+
         ActionKinds = Enum.GetValues<InputActionKind>()
             .Select(kind => new ControlsActionKindOption(kind,
                 $"{new InputAction(kind).Category} · {new InputAction(kind).Title}"))
@@ -70,9 +80,13 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
         });
         SelectAllCommand = new Command(() => SetSelection(Pad.Inputs.Select(input => input.Id)));
         ClearSelectionCommand = new Command(() => SetSelection(Array.Empty<int>()));
-        ApplyCommand = new Command(async () => await ApplyAsync(), () => HasSelection && !IsBusy);
+        ApplyCommand = new Command(async () => await ApplyAsync(), () => HasSelection && !IsBusy && !AgentChangesPending);
         ResetCommand = new Command(ResetToDefaults, () => HasSelection && !IsBusy);
         TestCommand = new Command(async () => await TestAsync(), () => SelectedInputs.Count == 1 && !IsBusy);
+        SelectAllAgentKeysCommand = new Command(SelectAllAgentKeys);
+        ClearAgentKeysCommand = new Command(ClearAgentKeys);
+        ApplyAgentKeysCommand = new Command(async () => await ApplyAgentKeysAsync());
+        ResetAgentKeysCommand = new Command(ResetAgentKeys);
 
         RefreshInputSummaries();
     }
@@ -103,6 +117,10 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
     public ICommand ApplyCommand { get; }
     public ICommand ResetCommand { get; }
     public ICommand TestCommand { get; }
+    public ICommand SelectAllAgentKeysCommand { get; }
+    public ICommand ClearAgentKeysCommand { get; }
+    public ICommand ApplyAgentKeysCommand { get; }
+    public ICommand ResetAgentKeysCommand { get; }
 
     public IReadOnlyList<ControlsInputViewModel> SelectedInputs => Groups.SelectMany(group => group.Items)
         .Where(input => input.IsSelected).ToArray();
@@ -145,7 +163,58 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
     /// <summary>Agent display names in slot order, for the pad map's agent labels.</summary>
     public IReadOnlyList<string> AgentNames => _agentNames;
 
-    public string SelectedTitle => SelectedCount switch
+    /// <summary>Status message for agent key operations.</summary>
+    public string AgentKeyStatus { get; private set; } = "";
+
+    /// <summary>Configured agent key IDs in physical reading order.
+
+    /// <summary>Configured agent key IDs in physical reading order.
+    /// Defaults to [1,0,2,3,4,5]; [] disables dedicated agent keys.</summary>
+    public List<int> AgentKeyIds
+    {
+        get => _agentKeyIds;
+        set
+        {
+            if (_agentKeyIds == value) return;
+            _agentKeyIds = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(AgentKeyIds));
+            RefreshInputSummaries();
+        }
+    }
+
+    /// <summary>Draft agent keyIds pending Apply. Starts as a copy of AgentKeyIds.</summary>
+    public List<int> DraftAgentKeyIds
+    {
+        get => _draftAgentKeyIds;
+        set
+        {
+            if (_draftAgentKeyIds == value) return;
+            _draftAgentKeyIds = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(DraftAgentKeyIds));
+        }
+    }
+
+    /// <summary>True when agent key changes are pending Apply confirmation.</summary>
+    public bool AgentChangesPending
+    {
+        get => _agentChangesPending;
+        private set
+        {
+            if (_agentChangesPending == value) return;
+            _agentChangesPending = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(AgentChangesPending));
+            RefreshCommands();
+        }
+    }
+
+    /// <summary>Returns true if the given input id is a dedicated agent key.</summary>
+    public bool IsAgentKeySelected(int id)
+    {
+        return AgentKeyIds.Contains(id);
+    }
     {
         0 => "No input selected",
         1 => $"{SelectedInputs[0].Name} (AG{SelectedInputs[0].Id})",
@@ -337,6 +406,12 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
         try { action = BuildAction(kind); }
         catch (FormatException ex) { Status = ex.Message; return; }
 
+        // If editing a FocusSlot and there are agent key changes pending, apply those first
+        if (_editorKind == InputActionKind.FocusSlot && AgentChangesPending)
+        {
+            await ApplyAgentKeysAsync();
+        }
+
         IsBusy = true;
         try
         {
@@ -362,7 +437,7 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
             ? parsedMedia : MediaKey.PlayPause;
         return kind switch
         {
-            InputActionKind.FocusSlot => new(kind, Slot: ParseNumber(Slot, 1, 1, 6, "slot (1–6)")),
+            InputActionKind.FocusSlot => new(kind, Slot: ParseNumber(Slot, 1, 1, 13, "slot (1–13)")),
             InputActionKind.FocusPane => new(kind, Direction: direction),
             InputActionKind.Scroll => new(kind, Direction: direction, Amount: ParseNumber(Amount, 5, 1, 20, "amount (1–20)")),
             InputActionKind.SendKeys or InputActionKind.KeyboardShortcut or InputActionKind.HerdrCommand or
@@ -446,6 +521,125 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
             input.Available = _bridge.AvailableInputIds.Contains(input.Id);
         }
         OnPropertyChanged(nameof(CustomizedSummary));
+    }
+
+    // Agent Layout support
+    private void RefreshAgentKeys()
+    {
+        // Sync DraftAgentKeyIds from applied AgentKeyIds when no pending changes
+        if (!AgentChangesPending)
+        {
+            DraftAgentKeyIds = new List<int>(AgentKeyIds);
+        }
+        OnPropertyChanged(nameof(DraftAgentKeyIds));
+        OnPropertyChanged(nameof(AgentChangesPending));
+        RefreshCommands();
+    }
+
+    private void ToggleAgentKey(int id)
+    {
+        if (AgentKeyIds.Contains(id))
+        {
+            // Deselect: remove from agent keys
+            AgentKeyIds.Remove(id);
+        }
+        else
+        {
+            // Select: add to agent keys (maintain physical reading order)
+            // Insert in the correct position based on physical reading order
+            var readingOrder = new[] { 1, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+            var index = readingOrder.IndexOf(id);
+            if (index >= 0 && AgentKeyIds.Count < 13)
+            {
+                // Add after the last key that comes before this one in reading order
+                var existingOrder = AgentKeyIds.Select(id => readingOrder.IndexOf(id)).Where(i => i >= 0).ToList();
+                var insertPos = existingOrder.Count > 0 ? existingOrder.Max() + 1 : 0;
+                if (insertPos >= readingOrder.Count) insertPos = readingOrder.Count - 1;
+                AgentKeyIds.Insert(insertPos, id);
+            }
+        }
+        DraftAgentKeyIds = new List<int>(AgentKeyIds);
+        AgentChangesPending = true;
+        RefreshInputSummaries();
+        OnPropertyChanged(nameof(AgentKeyIds));
+    }
+
+    private async Task ApplyAgentKeysAsync()
+    {
+        if (AgentKeyIds.SequenceEqual(DraftAgentKeyIds))
+        {
+            AgentChangesPending = false;
+            AgentKeyStatus = "Agent keys already up to date.";
+            Status = "Agent keys already up to date.";
+            return;
+        }
+
+        var confirmed = await Application.Current.MainPage.DisplayAlert(
+            "Apply Agent Keys",
+            $"Apply these agent key changes?\n\nCurrent: {string.Join(", ", AgentKeyIds)}\nProposed: {string.Join(", ", DraftAgentKeyIds)}\nThis will replace custom actions on any keys that change.",
+            "Apply",
+            "Cancel");
+
+        if (!confirmed) return;
+
+        try
+        {
+            // Apply the draft agent keyIds to the bindings
+            _bridge.Bindings.AgentKeyIds = new List<int>(DraftAgentKeyIds);
+            // Save the configuration atomically
+            await _bridge.SaveConfigAsync();
+            AgentKeyIds = new List<int>(DraftAgentKeyIds);
+            DraftAgentKeyIds = new List<int>(AgentKeyIds);
+            AgentChangesPending = false;
+            AgentKeyStatus = $"Applied agent keys: {string.Join(", ", AgentKeyIds)}.";
+            Status = $"Applied agent keys: {string.Join(", ", AgentKeyIds)}.";
+            RefreshInputSummaries();
+        }
+        catch (Exception ex)
+        {
+            AgentKeyStatus = $"Could not save agent keys: {ex.Message}";
+            Status = $"Could not save agent keys: {ex.Message}";
+        }
+    }
+
+    private void ResetAgentKeys()
+    {
+        var confirmed = Application.Current.MainPage.DisplayAlert(
+            "Reset Agent Keys",
+            "Reset agent keys to default [1,0,2,3,4,5]? This will replace any custom actions on those keys.",
+            "Reset",
+            "Cancel");
+
+        if (!confirmed) return;
+
+        AgentKeyIds = new List<int>(_defaultAgentKeyIds);
+        DraftAgentKeyIds = new List<int>(_defaultAgentKeyIds);
+        AgentChangesPending = false;
+        _bridge.Bindings.AgentKeyIds = new List<int>(_defaultAgentKeyIds);
+        try { _bridge.SaveConfigAsync(); } catch { }
+        AgentKeyStatus = "Agent keys reset to default [1,0,2,3,4,5].";
+        Status = "Agent keys reset to default [1,0,2,3,4,5].";
+        RefreshInputSummaries();
+    }
+
+    private void SelectAllAgentKeys()
+    {
+        AgentKeyIds = new List<int>(_defaultAgentKeyIds); // [1,0,2,3,4,5]
+        DraftAgentKeyIds = new List<int>(AgentKeyIds);
+        AgentChangesPending = true;
+        AgentKeyStatus = "Agent keys set to default [1,0,2,3,4,5].";
+        RefreshInputSummaries();
+        OnPropertyChanged(nameof(AgentKeyIds));
+    }
+
+    private void ClearAgentKeys()
+    {
+        AgentKeyIds = new List<int>(); // [] = no dedicated agent keys
+        DraftAgentKeyIds = new List<int>(AgentKeyIds);
+        AgentChangesPending = true;
+        AgentKeyStatus = "Agent keys cleared (no dedicated agent keys).";
+        RefreshInputSummaries();
+        OnPropertyChanged(nameof(AgentKeyIds));
     }
 
     private void CapabilitiesChanged(IReadOnlySet<int> available)
