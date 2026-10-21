@@ -62,8 +62,8 @@ remote rename is an external action and is not performed by this worktree.
   and resets the layout; newly added keys reset to Focus Agent, removed keys
   keep their actions, custom actions on layout keys take precedence, and
   Focus-slot actions accept slots 1–13. Layout edits are host-side only: the
-  device keymap is never rewritten. Unreleased; this is a minor SemVer change
-  (0.5.0 → 0.6.0) and is recorded in `CHANGELOG.md`.
+  device keymap is never rewritten. Released as 0.6.0, a minor SemVer change;
+  recorded in `CHANGELOG.md`.
 
 ### Verification so far
 

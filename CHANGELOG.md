@@ -6,7 +6,7 @@ and this file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 The version lives in `Directory.Build.props` and is surfaced by the app and the
 console harness, so there is nothing else to keep in step.
 
-## [Unreleased]
+## [0.6.0] - 2026-10-20
 
 ### Added
 

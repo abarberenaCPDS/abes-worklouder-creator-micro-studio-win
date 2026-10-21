@@ -12,7 +12,7 @@
     What each version contains is recorded in CHANGELOG.md.
   -->
   <PropertyGroup>
-    <Version>0.5.0</Version>
+    <Version>0.6.0</Version>
     <Product>Abe's WorkLouder Creator Micro Studio for Windows</Product>
     <Company>Abe</Company>
     <Authors>Abe</Authors>
