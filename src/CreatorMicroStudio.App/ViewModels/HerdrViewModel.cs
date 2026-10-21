@@ -91,9 +91,7 @@ public sealed class HerdrViewModel : INotifyPropertyChanged
                 Agents.Add(new HerdrAgentViewModel(snapshot[index], index, _bridge.Bindings,
                     _bridge.AvailableInputIds, FocusAgentCommand));
 
-            AgentStatus = snapshot.Length == 0
-                ? "Herdr is reachable, but its latest snapshot contains no agents."
-                : $"{snapshot.Length} agent(s), in Herdr server order. The first six correspond to the pad's six agent slots.";
+            AgentStatus = DescribeAgents(snapshot.Length);
         });
     }
 
@@ -103,8 +101,14 @@ public sealed class HerdrViewModel : INotifyPropertyChanged
         {
             RefreshInputMappings(_bridge.AvailableInputIds);
             RebuildAgentRows();
+            AgentStatus = DescribeAgents(Agents.Count);
         });
     }
+
+    private string DescribeAgents(int count) => count == 0
+        ? "Herdr is reachable, but its latest snapshot contains no agents."
+        : $"{count} agent(s), in Herdr server order. The pad's configured layout has " +
+          $"{_bridge.Bindings.AgentKeyIds.Count} agent slot(s).";
 
     private void InputCapabilitiesChanged(IReadOnlySet<int> availableInputIds)
     {
@@ -132,7 +136,7 @@ public sealed class HerdrViewModel : INotifyPropertyChanged
         foreach (var input in Pad.Inputs)
         {
             var action = _bridge.Bindings.ActionFor(input.Id);
-            Inputs.Add(new HerdrInputViewModel(input, action.Title,
+            Inputs.Add(new HerdrInputViewModel(input, action.Summary,
                 _bridge.Bindings.IsActionCustomized(input.Id), availableInputIds.Contains(input.Id)));
         }
 
@@ -189,21 +193,23 @@ public sealed class HerdrAgentViewModel
         Agent = agent;
         FocusCommand = focusCommand;
 
-        if (serverIndex < Pad.AgentKeyIds.Count)
+        if (serverIndex < bindings.AgentKeyIds.Count)
         {
-            var inputId = Pad.AgentKeyIds[serverIndex];
+            var inputId = bindings.AgentKeyIds[serverIndex];
             var input = Pad.Input(inputId)!;
+            var action = bindings.ActionFor(inputId);
             SlotSummary = $"Slot {serverIndex + 1} · AG{input.Id} · {input.Name}";
-            SlotAction = $"Input action: {bindings.ActionFor(input.Id).Title}" +
-                (bindings.IsActionCustomized(input.Id) ? " (custom)" : " (default)");
-            InputAvailability = availableInputIds.Contains(input.Id)
+            SlotAction = $"Input action: {action.Summary}" +
+                (bindings.IsActionCustomized(inputId) ? " (custom)" : " (default)") +
+                (action.Kind == InputActionKind.FocusAgent ? "" : " — takes precedence over agent status");
+            InputAvailability = availableInputIds.Contains(inputId)
                 ? "Available on current profile"
                 : "Unavailable on current active profile";
-            IsInputUnavailable = !availableInputIds.Contains(input.Id);
+            IsInputUnavailable = !availableInputIds.Contains(inputId);
         }
         else
         {
-            SlotSummary = "No pad slot · the pad has six agent slots";
+            SlotSummary = $"No pad slot · the configured layout has {bindings.AgentKeyIds.Count} agent key(s)";
             SlotAction = "";
             InputAvailability = "";
             IsInputUnavailable = false;

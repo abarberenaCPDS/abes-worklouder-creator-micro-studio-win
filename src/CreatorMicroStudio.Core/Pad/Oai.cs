@@ -103,7 +103,9 @@ public static class Oai
 }
 
 /// The pad's physical key rows, matching the firmware's [2, 4, 4, 3] matrix.
-/// Key index runs row-major from 0, so the six agent keys are 0...5.
+/// Key index runs row-major from 0. Agent slots are configured in config.json
+/// and may use any of the thirteen keycaps; the stock layout below is only the
+/// compatibility default.
 public static partial class Pad
 {
     public static readonly List<List<int>> Rows = new()
@@ -120,11 +122,20 @@ public static partial class Pad
     /// when turning everything off, not just the visible keys.
     public const int MaxThreadId = 19;
 
-    /// Agent slot N lights and answers to `agentKeyIDs[N]`, in READING order:
-    /// left to right, top to bottom as you look at the pad. The firmware's top
-    /// row is wired right to left — key 0 is the top-RIGHT key — so reading
-    /// order starts 1, 0. The other rows run left to right in index order.
+    /// The stock agent layout: slot N lights and answers to `AgentKeyIds[N]`,
+    /// in READING order: left to right, top to bottom as you look at the pad.
+    /// The firmware's top row is wired right to left — key 0 is the top-RIGHT
+    /// key — so reading order starts 1, 0. The other rows run left to right in
+    /// index order.
+    ///
+    /// Runtime dispatch and lighting must use the active
+    /// <see cref="Config.KeyBindings.AgentKeyIds"/> instead; this list is only
+    /// the default and the factory reset target.
     public static readonly List<int> AgentKeyIds = new() { 1, 0, 2, 3, 4, 5 };
+
+    /// Every physical keycap can be assigned to an agent slot.
+    public static IReadOnlyList<int> ConfigurableActionKeyIds { get; } =
+        Enumerable.Range(0, KeyCount).ToArray();
 
     /// The rows as you look at the pad, for on-screen mirrors. `Rows` stays in
     /// firmware order because the keymap file is addressed that way.
@@ -161,7 +172,8 @@ public static partial class Pad
         return inputs;
     }
 
-    /// The agent slot a key answers for, or null for non-agent keys.
+    /// The stock agent slot a key answers for, or null for non-agent keys.
+    /// Runtime callers use <see cref="Config.KeyBindings.AgentSlotFor"/>.
     public static int? AgentSlotFor(int key) => AgentKeyIds.IndexOf(key) >= 0 ? AgentKeyIds.IndexOf(key) : null;
 
     public const int StackKeyId = 6;

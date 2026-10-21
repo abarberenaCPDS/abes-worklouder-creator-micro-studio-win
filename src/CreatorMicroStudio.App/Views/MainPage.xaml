@@ -294,7 +294,7 @@
             </HorizontalStackLayout>
 
             <HorizontalStackLayout Spacing="8" HorizontalOptions="Center">
-                <Button Text="Top 6" Command="{Binding Lights.SelectAgentKeysCommand}" FontSize="11" Padding="10,4" />
+                <Button Text="Agent keys" Command="{Binding Lights.SelectAgentKeysCommand}" FontSize="11" Padding="10,4" />
                 <Button Text="All" Command="{Binding Lights.SelectAllCommand}" FontSize="11" Padding="10,4" />
                 <Button Text="None" Command="{Binding Lights.SelectNoneCommand}" FontSize="11" Padding="10,4" />
                 <Label Text="{Binding Lights.SelectionText}"

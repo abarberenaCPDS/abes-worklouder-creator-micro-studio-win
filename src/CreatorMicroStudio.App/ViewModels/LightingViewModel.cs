@@ -27,7 +27,8 @@ public class LightingViewModel : INotifyPropertyChanged
         _bridge = bridge;
 
         ToggleKeyCommand = new Command<LightingKeyViewModel>(ToggleKey);
-        SelectAgentKeysCommand = new Command(() => Reselect(_editor.SelectAgentKeys));
+        SelectAgentKeysCommand = new Command(() =>
+            Reselect(() => _editor.SelectAgentKeys(_bridge.Bindings.AgentKeyIds)));
         SelectAllCommand = new Command(() => Reselect(_editor.SelectEveryKey));
         SelectNoneCommand = new Command(() => Reselect(_editor.SelectNone));
         ApplySelectedCommand = new Command(async () => await ApplySelectedAsync());

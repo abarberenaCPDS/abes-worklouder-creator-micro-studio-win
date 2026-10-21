@@ -44,6 +44,14 @@ public sealed class BridgeConfig
     public int VoiceColor { get; set; } = 0xECEFF1;
     public int VoiceActiveColor { get; set; } = 0xFF3B30;
     public int MacroColor { get; set; } = 0x90A4AE;
+    /// Herdr navigation, including Focus Agent on a key outside the layout.
+    public int FocusAgentColor { get; set; } = 0x4C9AFF;
+    /// Model and effort actions.
+    public int TuneColor { get; set; } = 0xEA80FC;
+    /// Synthesised system input: scroll, shortcuts, media keys, typing.
+    public int SystemColor { get; set; } = 0xFFEB3B;
+    /// Opening things and running shell commands.
+    public int LaunchColor { get; set; } = 0xFF6E40;
     public double Brightness { get; set; } = 1;
     public double Speed { get; set; } = 0.5;
 
@@ -78,17 +86,22 @@ public static class StatusMapper
         return "unknown";
     }
 
-    /// One thread entry per agent key: agent slot N takes `Pad.agentKeyIDs[N]`
-    /// — reading order on the pad — and unused keys go dark. Always returns
-    /// exactly `Pad.AgentKeyIds.Count` entries, so a vanished agent actively
-    /// clears its key rather than leaving it stale.
-    public static List<Oai.Thread> ThreadsFor(List<HerdrAgent> agents, BridgeConfig? cfg = null)
+    /// One thread entry per configured agent key: slot N takes
+    /// `agentKeyIds[N]` — reading order on the pad — and unused keys go dark.
+    /// Always returns exactly `agentKeyIds.Count` entries, so a vanished agent
+    /// actively clears its key rather than leaving it stale.
+    ///
+    /// Pass the active bindings' layout at runtime; the default is only the
+    /// stock compatibility layout.
+    public static List<Oai.Thread> ThreadsFor(List<HerdrAgent> agents, BridgeConfig? cfg = null,
+        IReadOnlyList<int>? agentKeyIds = null)
     {
         cfg ??= new BridgeConfig();
-        var threads = new List<Oai.Thread>();
-        for (var slot = 0; slot < Pad.AgentKeyIds.Count; slot++)
+        var keys = agentKeyIds ?? Pad.AgentKeyIds;
+        var threads = new List<Oai.Thread>(keys.Count);
+        for (var slot = 0; slot < keys.Count; slot++)
         {
-            var id = Pad.AgentKeyIds[slot];
+            var id = keys[slot];
             if (slot >= agents.Count)
             {
                 threads.Add(new Oai.Thread(id) { Brightness = 0, Effect = Oai.Effect.Off });
@@ -107,6 +120,61 @@ public static class StatusMapper
 
         return threads;
     }
+
+    /// <summary>
+    /// The light for a key's action, or null for a configured agent key that is
+    /// showing its agent. A custom action on a layout key takes precedence over
+    /// agent status, so it reads as its action category instead.
+    /// </summary>
+    public static Oai.Thread? ActionThread(InputAction action, int key, BridgeConfig? cfg = null,
+        IReadOnlyList<int>? agentKeyIds = null)
+    {
+        cfg ??= new BridgeConfig();
+        if (key is < 0 or >= Pad.KeyCount) return null;
+
+        var layout = agentKeyIds ?? Pad.AgentKeyIds;
+        if (action.Kind == InputActionKind.FocusAgent && layout.Contains(key)) return null;
+
+        return action.Kind switch
+        {
+            InputActionKind.None => new Oai.Thread(key) { Brightness = 0, Effect = Oai.Effect.Off },
+            InputActionKind.Voice => VoiceThread(key, active: false, cfg),
+            InputActionKind.FocusAgent or InputActionKind.FocusSlot => FocusAgentThread(key, cfg),
+            // A prompt action with nothing to send reads as unbound.
+            InputActionKind.InsertText or InputActionKind.SubmitPrompt when string.IsNullOrEmpty(action.Value) =>
+                new Oai.Thread(key) { Brightness = 0, Effect = Oai.Effect.Off },
+            InputActionKind.InsertText or InputActionKind.SubmitPrompt => MacroThread(key, cfg),
+            InputActionKind.EffortUp or InputActionKind.EffortDown or InputActionKind.ModelNext or
+                InputActionKind.ModelPrevious or InputActionKind.ModelPickerConfirm or
+                InputActionKind.ModelPickerCancel => CategoryThread(key, cfg.TuneColor, cfg),
+            InputActionKind.Scroll or InputActionKind.KeyboardShortcut or InputActionKind.MediaKey or
+                InputActionKind.TypeText => CategoryThread(key, cfg.SystemColor, cfg),
+            InputActionKind.OpenUrl or InputActionKind.ShellCommand => CategoryThread(key, cfg.LaunchColor, cfg),
+            _ => CategoryThread(key, cfg.TabCycleColor, cfg),
+        };
+    }
+
+    /// Configured agent keys keep their live status colours; a Focus Agent
+    /// action on any other key gets a quiet blue light.
+    public static Oai.Thread FocusAgentThread(int id, BridgeConfig? cfg = null)
+    {
+        cfg ??= new BridgeConfig();
+        return new Oai.Thread(id)
+        {
+            Color = cfg.FocusAgentColor,
+            Brightness = cfg.Brightness * 0.25,
+            Effect = Oai.Effect.Solid,
+            Speed = cfg.Speed,
+        };
+    }
+
+    private static Oai.Thread CategoryThread(int id, int color, BridgeConfig cfg) => new(id)
+    {
+        Color = color,
+        Brightness = cfg.Brightness * 0.3,
+        Effect = Oai.Effect.Solid,
+        Speed = cfg.Speed,
+    };
 
     public static Oai.Thread StackThread(bool open, BridgeConfig? cfg = null)
     {

@@ -25,10 +25,18 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
     private bool _isBusy;
     private IReadOnlyDictionary<int, Color> _keyColors = new Dictionary<int, Color>();
     private IReadOnlyList<string> _agentNames = Array.Empty<string>();
+    private List<int> _draftAgentKeys;
+    private List<int> _loadedAgentKeys;
+    private string _agentLayoutStatus = "";
 
     public ControlsViewModel(IBridgeService bridge)
     {
         _bridge = bridge;
+        _draftAgentKeys = OrderedAgentKeys(_bridge.Bindings.AgentKeyIds);
+        _loadedAgentKeys = new List<int>(_draftAgentKeys);
+        _agentLayoutStatus = _draftAgentKeys.Count == 0
+            ? "No keycaps are assigned to agents. Toggle keycaps to add slots, then apply."
+            : "Toggle keycaps to edit the draft layout, then apply. Unapplied changes are not saved.";
 
         foreach (var group in new[] { PadInputGroup.Keys, PadInputGroup.Dial, PadInputGroup.Joystick })
         {
@@ -73,8 +81,23 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
         ApplyCommand = new Command(async () => await ApplyAsync(), () => HasSelection && !IsBusy);
         ResetCommand = new Command(ResetToDefaults, () => HasSelection && !IsBusy);
         TestCommand = new Command(async () => await TestAsync(), () => SelectedInputs.Count == 1 && !IsBusy);
+        ApplyAgentLayoutCommand = new Command(async () => await ApplyAgentLayoutAsync(),
+            () => AgentLayoutIsDirty && !IsBusy);
+        ResetAgentLayoutCommand = new Command(async () => await ResetAgentLayoutAsync(),
+            () => CanResetAgentLayout);
+
+        // One stable item per keycap: toggling updates properties in place so
+        // keyboard focus and accessibility state survive a refresh.
+        foreach (var key in Pad.DisplayRows.SelectMany(row => row))
+            AgentLayoutKeys.Add(new ControlsAgentKeyViewModel(key, ToggleAgentKey));
+        var agentKeysByKey = AgentLayoutKeys.ToDictionary(item => item.Key);
+        AgentLayoutRows = Pad.DisplayRows
+            .Select(row => new ControlsAgentRowViewModel(
+                row.Select(key => agentKeysByKey[key]).ToArray()))
+            .ToArray();
 
         RefreshInputSummaries();
+        RefreshAgentLayout();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -103,6 +126,38 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
     public ICommand ApplyCommand { get; }
     public ICommand ResetCommand { get; }
     public ICommand TestCommand { get; }
+    public ICommand ApplyAgentLayoutCommand { get; }
+    public ICommand ResetAgentLayoutCommand { get; }
+
+    /// <summary>The thirteen keycaps as toggles, in physical reading order.</summary>
+    public ObservableCollection<ControlsAgentKeyViewModel> AgentLayoutKeys { get; } = new();
+
+    /// <summary>The same keycaps grouped into the pad's 2/4/4/3 physical rows.</summary>
+    public IReadOnlyList<ControlsAgentRowViewModel> AgentLayoutRows { get; }
+
+    /// <summary>
+    /// Asks before a layout replaces a custom action. The view wires this to a
+    /// dialog; without one the layout is not applied, so a missing dialog can
+    /// never silently replace an action.
+    /// </summary>
+    public Func<string, string, string, Task<bool>>? Confirm { get; set; }
+
+    public string AgentLayoutStatus
+    {
+        get => _agentLayoutStatus;
+        private set { if (_agentLayoutStatus != value) { _agentLayoutStatus = value; OnPropertyChanged(); } }
+    }
+
+    public string AgentLayoutSummary =>
+        $"{OrderedAgentKeys(_draftAgentKeys).Count} agent keys · " +
+        $"{Pad.KeyCount - OrderedAgentKeys(_draftAgentKeys).Count} action keys";
+
+    public bool AgentLayoutIsDirty =>
+        !OrderedAgentKeys(_draftAgentKeys).SequenceEqual(OrderedAgentKeys(_bridge.Bindings.AgentKeyIds));
+
+    private bool CanResetAgentLayout =>
+        !IsBusy && (AgentLayoutIsDirty ||
+            !OrderedAgentKeys(_bridge.Bindings.AgentKeyIds).SequenceEqual(Pad.AgentKeyIds));
 
     public IReadOnlyList<ControlsInputViewModel> SelectedInputs => Groups.SelectMany(group => group.Items)
         .Where(input => input.IsSelected).ToArray();
@@ -327,7 +382,7 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(ValueFieldLabel));
         OnPropertyChanged(nameof(ValueFieldPlaceholder));
         OnPropertyChanged(nameof(IsMediaVisible));
-        Status = $"Current action: {action.Title}{(_bridge.Bindings.IsActionCustomized(id) ? " (custom)" : " (default)")}.";
+        Status = $"Current action: {action.Summary}{(_bridge.Bindings.IsActionCustomized(id) ? " (custom)" : " (default)")}.";
     }
 
     private async Task ApplyAsync()
@@ -341,7 +396,7 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
         try
         {
             _bridge.SetActionOverrides(SelectedInputs.Select(input => input.Id), action);
-            Status = $"Applied {action.Title} to {SelectedCount} input(s).";
+            Status = $"Applied {action.Summary} to {SelectedCount} input(s).";
         }
         catch (Exception ex) { Status = $"Could not save action: {ex.Message}"; }
         finally { IsBusy = false; }
@@ -362,7 +417,8 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
             ? parsedMedia : MediaKey.PlayPause;
         return kind switch
         {
-            InputActionKind.FocusSlot => new(kind, Slot: ParseNumber(Slot, 1, 1, 6, "slot (1–6)")),
+            InputActionKind.FocusSlot => new(kind, Slot: ParseNumber(Slot, 1, 1, Pad.KeyCount,
+                $"slot (1–{Pad.KeyCount})")),
             InputActionKind.FocusPane => new(kind, Direction: direction),
             InputActionKind.Scroll => new(kind, Direction: direction, Amount: ParseNumber(Amount, 5, 1, 20, "amount (1–20)")),
             InputActionKind.SendKeys or InputActionKind.KeyboardShortcut or InputActionKind.HerdrCommand or
@@ -395,22 +451,184 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
             if (_editorKind is not { } kind) return;
             var draft = BuildAction(kind);
             await _bridge.TestActionAsync(input.Id, draft);
-            Status = $"Tested {input.Name}: {draft.Title}.";
+            Status = $"Tested {input.Name}: {draft.Summary}.";
             Tested?.Invoke(input.Id);
         }
         catch (Exception ex) { Status = $"Test failed: {ex.Message}"; }
         finally { IsBusy = false; }
     }
 
-    private void BindingsChanged(KeyBindings _)
+    private void BindingsChanged(KeyBindings bindings)
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
+            // Adopt an external layout change only when the draft is clean;
+            // otherwise the person's unapplied edits would disappear.
+            var current = OrderedAgentKeys(bindings.AgentKeyIds);
+            var draftWasClean = OrderedAgentKeys(_draftAgentKeys).SequenceEqual(_loadedAgentKeys);
+            _loadedAgentKeys = current;
+            if (draftWasClean) _draftAgentKeys = new List<int>(current);
+
             OnPropertyChanged(nameof(Bindings));
             RefreshInputSummaries();
+            RefreshAgentLayout();
             OnPropertyChanged(nameof(SelectedSubtitle));
             if (HasOneSelection) LoadAction(SelectedInputs[0].Id);
         });
+    }
+
+    private static List<int> OrderedAgentKeys(IEnumerable<int> keys)
+    {
+        var selected = keys.ToHashSet();
+        return Pad.DisplayRows.SelectMany(row => row).Where(selected.Contains).ToList();
+    }
+
+    private void ToggleAgentKey(int key)
+    {
+        if (!_draftAgentKeys.Remove(key)) _draftAgentKeys.Add(key);
+        _draftAgentKeys = OrderedAgentKeys(_draftAgentKeys);
+        RefreshAgentLayout();
+    }
+
+    private void RefreshAgentLayout()
+    {
+        var ordered = OrderedAgentKeys(_draftAgentKeys);
+        var index = 0;
+        foreach (var key in Pad.DisplayRows.SelectMany(row => row))
+        {
+            var slot = ordered.IndexOf(key);
+            var action = _bridge.Bindings.ActionFor(key);
+            AgentLayoutKeys[index++].Update(
+                slot >= 0 ? slot : null,
+                slot >= 0 && action.Kind != InputActionKind.FocusAgent);
+        }
+
+        OnPropertyChanged(nameof(AgentLayoutSummary));
+        OnPropertyChanged(nameof(AgentLayoutIsDirty));
+        RefreshCommands();
+    }
+
+    private async Task ApplyAgentLayoutAsync()
+    {
+        if (IsBusy) return;
+
+        var reviewed = _bridge.Bindings;
+        var ordered = OrderedAgentKeys(_draftAgentKeys);
+        if (ordered.SequenceEqual(OrderedAgentKeys(reviewed.AgentKeyIds)))
+        {
+            AgentLayoutStatus = "The draft layout is already saved.";
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var replaced = ordered.Except(reviewed.AgentKeyIds)
+                .Where(key => reviewed.IsActionCustomized(key) &&
+                              reviewed.ActionFor(key).Kind != InputActionKind.FocusAgent)
+                .ToList();
+            if (replaced.Count > 0)
+            {
+                if (Confirm is null)
+                {
+                    AgentLayoutStatus = "Cannot ask for confirmation, so the layout was not applied.";
+                    return;
+                }
+
+                var details = string.Join(", ", replaced.Select(key =>
+                    $"Key {key} ({reviewed.ActionFor(key).Summary})"));
+                var proceed = await Confirm("Apply this agent layout?",
+                    $"Adding these keys replaces their custom actions with Focus Agent: {details}. " +
+                    "Other removed keys keep their actions.", "Apply");
+                if (!proceed) return;
+            }
+
+            SaveAgentLayout(ordered, reviewed);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task ResetAgentLayoutAsync()
+    {
+        if (IsBusy) return;
+
+        var reviewed = _bridge.Bindings;
+        var factory = new List<int>(Pad.AgentKeyIds);
+
+        IsBusy = true;
+        try
+        {
+            if (Confirm is null)
+            {
+                AgentLayoutStatus = "Cannot ask for confirmation, so the layout was not reset.";
+                return;
+            }
+
+            var replaced = factory.Except(reviewed.AgentKeyIds)
+                .Where(key => reviewed.IsActionCustomized(key) &&
+                              reviewed.ActionFor(key).Kind != InputActionKind.FocusAgent)
+                .ToList();
+            var message = $"Restore the factory layout (keys {string.Join(", ", Pad.AgentKeyIds)} " +
+                "in physical reading order).";
+            if (OrderedAgentKeys(reviewed.AgentKeyIds).SequenceEqual(factory))
+                message += " The saved layout is already the factory layout; this discards the unapplied draft.";
+            message += replaced.Count == 0
+                ? " Removed keys keep their actions."
+                : " This replaces custom actions on newly added keys: " +
+                  string.Join(", ", replaced.Select(key =>
+                      $"Key {key} ({reviewed.ActionFor(key).Summary})")) +
+                  ". Removed keys keep their actions.";
+            if (!await Confirm("Reset the agent layout?", message, "Reset")) return;
+
+            _draftAgentKeys = factory;
+            SaveAgentLayout(factory, reviewed);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private void SaveAgentLayout(List<int> ordered, KeyBindings reviewed)
+    {
+        IsBusy = true;
+        try
+        {
+            _bridge.SetAgentKeys(ordered, reviewed);
+            _loadedAgentKeys = OrderedAgentKeys(_bridge.Bindings.AgentKeyIds);
+            _draftAgentKeys = new List<int>(_loadedAgentKeys);
+            AgentLayoutStatus = $"Saved {_loadedAgentKeys.Count} agent key(s) and " +
+                $"{Pad.KeyCount - _loadedAgentKeys.Count} action key(s).";
+            OnPropertyChanged(nameof(Bindings));
+            RefreshInputSummaries();
+            RefreshAgentLayout();
+            OnPropertyChanged(nameof(SelectedSubtitle));
+            if (HasOneSelection) LoadAction(SelectedInputs[0].Id);
+        }
+        catch (AgentLayoutEditException ex)
+        {
+            // The compare-and-save lost: adopt what is actually on disk but
+            // keep the unapplied draft so it can be reviewed and applied again.
+            if (ex.ConfigurationChanged) _bridge.ReloadConfiguration();
+            _loadedAgentKeys = OrderedAgentKeys(_bridge.Bindings.AgentKeyIds);
+            AgentLayoutStatus = $"Could not save the agent layout: {ex.Message} " +
+                "Your draft layout is unchanged.";
+            OnPropertyChanged(nameof(Bindings));
+            RefreshInputSummaries();
+            RefreshAgentLayout();
+            if (HasOneSelection) LoadAction(SelectedInputs[0].Id);
+        }
+        catch (Exception ex)
+        {
+            AgentLayoutStatus = $"Could not save the agent layout: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private void KeyStateChanged(IReadOnlyDictionary<int, int> lit)
@@ -441,7 +659,7 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
         foreach (var input in Groups.SelectMany(group => group.Items))
         {
             var action = _bridge.Bindings.ActionFor(input.Id);
-            input.ActionSummary = action.Title;
+            input.ActionSummary = action.Summary;
             input.Customized = _bridge.Bindings.IsActionCustomized(input.Id);
             input.Available = _bridge.AvailableInputIds.Contains(input.Id);
         }
@@ -464,6 +682,8 @@ public sealed class ControlsViewModel : INotifyPropertyChanged
         (ApplyCommand as Command)?.ChangeCanExecute();
         (ResetCommand as Command)?.ChangeCanExecute();
         (TestCommand as Command)?.ChangeCanExecute();
+        (ApplyAgentLayoutCommand as Command)?.ChangeCanExecute();
+        (ResetAgentLayoutCommand as Command)?.ChangeCanExecute();
     }
 
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>
@@ -527,6 +747,61 @@ public sealed class ControlsInputViewModel : INotifyPropertyChanged
     {
         get => _actionSummary;
         set { if (_actionSummary != value) { _actionSummary = value; OnPropertyChanged(); } }
+    }
+
+    private void OnPropertyChanged([CallerMemberName] string? name = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+}
+
+/// <summary>One physical row of keycaps in the agent-layout editor.</summary>
+public sealed class ControlsAgentRowViewModel(IReadOnlyList<ControlsAgentKeyViewModel> keys)
+{
+    public IReadOnlyList<ControlsAgentKeyViewModel> Keys { get; } = keys;
+}
+
+/// <summary>One keycap in the draft agent layout; a stable item, updated in place.</summary>
+public sealed class ControlsAgentKeyViewModel : INotifyPropertyChanged
+{
+    private int? _slot;
+    private bool _takesPrecedence;
+
+    public ControlsAgentKeyViewModel(int key, Action<int> toggle)
+    {
+        Key = key;
+        ToggleCommand = new Command(() => toggle(key));
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public int Key { get; }
+    public int? Slot => _slot;
+    /// <summary>True when the key's current action runs instead of its agent.</summary>
+    public bool TakesPrecedence => _takesPrecedence;
+    public bool IsAgentKey => _slot is not null;
+    public string ButtonText => _slot is { } slot ? $"{Key} · S{slot + 1}" : $"{Key} +";
+    public string AutomationName => _slot is { } slot
+        ? $"Key {Key}, draft agent slot {slot + 1}" +
+          (_takesPrecedence ? ", current action takes precedence" : "")
+        : $"Key {Key}, action key";
+    public string HelpText => _slot is { } slot
+        ? $"Activate to remove key {Key} from the draft layout." +
+          (_takesPrecedence
+              ? " Its current action runs instead of agent status."
+              : $" It would answer for draft agent slot {slot + 1}.")
+        : $"Activate to make key {Key} a draft agent slot.";
+    public ICommand ToggleCommand { get; }
+
+    public void Update(int? slot, bool takesPrecedence)
+    {
+        if (_slot == slot && _takesPrecedence == takesPrecedence) return;
+        _slot = slot;
+        _takesPrecedence = takesPrecedence;
+        OnPropertyChanged(nameof(Slot));
+        OnPropertyChanged(nameof(TakesPrecedence));
+        OnPropertyChanged(nameof(IsAgentKey));
+        OnPropertyChanged(nameof(ButtonText));
+        OnPropertyChanged(nameof(AutomationName));
+        OnPropertyChanged(nameof(HelpText));
     }
 
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>

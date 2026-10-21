@@ -230,7 +230,8 @@ public sealed class PadMapView : GraphicsView, IDrawable
                 HorizontalAlignment.Right, VerticalAlignment.Bottom, TextFlow.ClipBounds);
         }
 
-        if (Pad.AgentSlotFor(id) is { } slot && AgentNames is { } names && slot < names.Count)
+        if (Bindings is { } bindings && bindings.ActionFor(id).Kind == InputActionKind.FocusAgent &&
+            bindings.AgentSlotFor(id) is { } slot && AgentNames is { } names && slot < names.Count)
         {
             canvas.FillColor = lit ?? Color.FromArgb("#4A5A72");
             canvas.FillCircle(rect.X + 12, rect.Bottom - 12, 3.6f);
@@ -332,13 +333,13 @@ public sealed class PadMapView : GraphicsView, IDrawable
         var action = Bindings?.ActionFor(id);
         if (action is null) return Pad.Input(id)?.ShortName ?? id.ToString(CultureInfo.InvariantCulture);
 
-        if (action.Kind == InputActionKind.FocusSlot
-            && Pad.AgentSlotFor(id) is { } slot
-            && AgentNames is { } names
-            && slot < names.Count)
-            return names[slot];
+        if (action.Kind == InputActionKind.FocusAgent)
+        {
+            if (Bindings?.AgentSlotFor(id) is not { } slot) return "Current agent";
+            return AgentNames is { } names && slot < names.Count ? names[slot] : $"Slot {slot + 1}";
+        }
 
-        return action.Title;
+        return action.Summary;
     }
 
     private void OnStartInteraction(object? sender, TouchEventArgs e)

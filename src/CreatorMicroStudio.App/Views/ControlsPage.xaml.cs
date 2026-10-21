@@ -1,6 +1,7 @@
 using AbesWorkLouderCreatorMicroStudio.Windows.Controls;
 using AbesWorkLouderCreatorMicroStudio.Windows.Services;
 using AbesWorkLouderCreatorMicroStudio.Windows.ViewModels;
+using Microsoft.Maui.ApplicationModel;
 
 namespace AbesWorkLouderCreatorMicroStudio.Windows.Views;
 
@@ -14,6 +15,15 @@ public partial class ControlsPage : ContentView
         InitializeComponent();
         _viewModel = new ControlsViewModel(bridge);
         BindingContext = _viewModel;
+        _viewModel.Confirm = async (title, message, accept) =>
+        {
+            var page = Application.Current?.Windows.FirstOrDefault()?.Page;
+            // Fail closed: an unreachable dialog must never silently replace
+            // an action or discard an unapplied layout.
+            if (page is null) return false;
+            return await MainThread.InvokeOnMainThreadAsync(() =>
+                page.DisplayAlertAsync(title, message, accept, "Cancel"));
+        };
 
         _viewModel.Tested += OnTested;
         PadMap.InputTapped += OnPadMapInputTapped;

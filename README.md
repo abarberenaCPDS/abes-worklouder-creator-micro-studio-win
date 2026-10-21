@@ -97,10 +97,10 @@ driving the real hardware.
 
 The Studio window now has a left navigation rail for **Studio**, **Controls**,
 **Lighting**, **Herdr**, and **Inspector**. Controls assigns host-side actions to
-the physical keys, dial and joystick; it never writes those choices to the
-pad's flash keymap. The map follows the hardware's reversed top row and marks
-joystick sectors or dial push unavailable when the active profile does not
-report them.
+the physical keys, dial and joystick, and its **Agent layout** card chooses which
+keycaps are agent slots; it never writes those choices to the pad's flash
+keymap. The map follows the hardware's reversed top row and marks joystick
+sectors or dial push unavailable when the active profile does not report them.
 
 The action set includes Herdr focus/tab/workspace/pane operations, key injection,
 prompts, Herdr CLI commands, model/effort controls, keyboard shortcuts, scroll,
@@ -124,6 +124,7 @@ without a config file. Example:
 
 ```json
 {
+  "agentKeys": [1, 0, 2, 3, 4, 5],
   "actions": {
     "6": "focus-agent",
     "7": "previous-tab",
@@ -147,8 +148,10 @@ without a config file. Example:
 }
 ```
 
-Unknown JSON fields are preserved on save. Actions and lighting are host-side;
-they do not rewrite the pad keymap. See the
+Unknown JSON fields are preserved on save. `"agentKeys"` lists the keycaps used
+as agent slots, in physical reading order — any of the 13 keys, with the stock
+six-key layout `[1, 0, 2, 3, 4, 5]` as the default. Actions, the agent layout
+and lighting are host-side; they do not rewrite the pad keymap. See the
 [Windows usage guide](docs/using-the-pad.md) for action parameters and input aliases.
 
 ## Versioning

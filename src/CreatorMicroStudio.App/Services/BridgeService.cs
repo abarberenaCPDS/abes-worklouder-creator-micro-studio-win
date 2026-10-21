@@ -50,6 +50,12 @@ public interface IBridgeService
     bool IsPreviewingLighting { get; }
     void SetActionOverride(int input, InputAction? action);
     void SetActionOverrides(IEnumerable<int> inputs, InputAction? action);
+
+    /// <summary>
+    /// Persists a host-side agent layout. Newly added keys are reset to Focus
+    /// Agent; removed keys keep their actions. The device keymap is never touched.
+    /// </summary>
+    void SetAgentKeys(IEnumerable<int> keys, KeyBindings? expectedBindings = null);
     Task TestActionAsync(int input);
     Task TestActionAsync(int input, InputAction action);
     void PreviewLightingPreferences(LightingPreferences preferences);
@@ -271,6 +277,14 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
     public void SetActionOverrides(IEnumerable<int> inputs, InputAction? action)
     {
         KeyBindings.SetActions(inputs, action);
+        _keyBindings = KeyBindings.Load();
+        _fingerprint = null;
+        OnBindingsChanged?.Invoke(_keyBindings);
+    }
+
+    public void SetAgentKeys(IEnumerable<int> keys, KeyBindings? expectedBindings = null)
+    {
+        KeyBindings.SetAgentKeys(keys, expectedBindings);
         _keyBindings = KeyBindings.Load();
         _fingerprint = null;
         OnBindingsChanged?.Invoke(_keyBindings);
@@ -539,47 +553,44 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
 
     private List<Oai.Thread> BuildThreads(List<HerdrAgent> agents, bool hasAgents)
     {
-        var threads = StatusMapper.ThreadsFor(hasAgents ? agents : new List<HerdrAgent>(), _config);
-        // These keys are no longer hard-wired to GitButler; generic action
-        // lights stay dim, with Studio's per-key preference able to override.
-        threads.Add(StatusMapper.MacroThread(Pad.StackKeyId, _config));
-        threads.Add(StatusMapper.TabCycleThread(_config));
-        threads.Add(StatusMapper.MacroThread(Pad.LandKeyId, _config));
-        threads.AddRange(FlexThreads());
+        var layout = _keyBindings.AgentKeyIds;
+        var threads = new Dictionary<int, Oai.Thread>();
 
-        for (var index = 0; index < threads.Count; index++)
+        // Agent status for the configured keys. A custom action on one of those
+        // keys takes precedence below, so it is painted as its action instead.
+        foreach (var thread in StatusMapper.ThreadsFor(
+                     hasAgents ? agents : new List<HerdrAgent>(), _config, layout))
         {
-            var thread = threads[index];
-            var slot = Pad.AgentSlotFor(thread.Id);
-            if (hasAgents && slot is { } agentSlot && agentSlot < agents.Count)
-            {
-                threads[index] = _lighting.LookForStatus(agents[agentSlot].AgentStatus)
-                    .Thread(thread.Id, _lighting.Brightness, _lighting.Speed);
-            }
-            else if (_lighting.Keys.TryGetValue(thread.Id, out var fixedLook))
-            {
-                threads[index] = fixedLook.Thread(thread.Id, _lighting.Brightness, _lighting.Speed);
-            }
+            threads[thread.Id] = thread;
         }
-        return threads;
-    }
 
-    /// Macro and voice keys share ids, so the binding decides each key's light:
-    /// configured text wins, the wide key falls back to voice.
-    private IEnumerable<Oai.Thread> FlexThreads()
-    {
-        foreach (var key in Pad.MacroKeyIds.Concat(Pad.VoiceKeyIds))
+        // Every keycap gets a thread. A key removed from the layout must be
+        // repainted, or it would keep showing the status of an agent it no
+        // longer answers for.
+        for (var id = 0; id < Pad.KeyCount; id++)
         {
-            var action = _keyBindings.ActionFor(key);
-            if (action.Kind is InputActionKind.InsertText or InputActionKind.SubmitPrompt)
-                yield return StatusMapper.MacroThread(key, _config);
-            else if (action.Kind == InputActionKind.Voice)
-                yield return StatusMapper.VoiceThread(key, active: false, _config);
-            else if (action.Kind == InputActionKind.None)
-                yield return new Oai.Thread(key) { Brightness = 0, Effect = Oai.Effect.Off };
+            var action = _keyBindings.ActionFor(id);
+            var slot = _keyBindings.AgentSlotFor(id);
+            var showsAgent = hasAgents && slot is { } agentSlot && agentSlot < agents.Count &&
+                action.Kind == InputActionKind.FocusAgent;
+
+            if (showsAgent)
+            {
+                threads[id] = _lighting.LookForStatus(agents[slot!.Value].AgentStatus)
+                    .Thread(id, _lighting.Brightness, _lighting.Speed);
+            }
+            else if (_lighting.Keys.TryGetValue(id, out var fixedLook))
+            {
+                threads[id] = fixedLook.Thread(id, _lighting.Brightness, _lighting.Speed);
+            }
             else
-                yield return StatusMapper.MacroThread(key, _config);
+            {
+                threads[id] = StatusMapper.ActionThread(action, id, _config, layout)
+                    ?? new Oai.Thread(id) { Brightness = 0, Effect = Oai.Effect.Off };
+            }
         }
+
+        return threads.OrderBy(pair => pair.Key).Select(pair => pair.Value).ToList();
     }
 
     private Oai.Zone UnderglowZone(string? aggregate) => _lighting.Underglow.Mode switch
@@ -754,11 +765,11 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
                 Activity($"{Pad.Input(input)?.Name ?? $"Input {input}"}: no action");
                 return;
             case InputActionKind.FocusAgent:
-                if (Pad.AgentSlotFor(input) is { } slot) await FocusSlotAsync(slot);
+                if (_keyBindings.AgentSlotFor(input) is { } slot) await FocusSlotAsync(slot);
                 else await FocusCurrentAgentAsync();
                 return;
             case InputActionKind.FocusSlot:
-                await FocusSlotAsync(Math.Clamp(action.Slot ?? 1, 1, 6) - 1);
+                await FocusSlotAsync(Math.Clamp(action.Slot ?? 1, 1, Pad.KeyCount) - 1);
                 return;
             case InputActionKind.NextTab:
                 await HerdrClient.CycleTabsAsync(_cts.Token, 1);
@@ -817,15 +828,15 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
                 return;
             case InputActionKind.Scroll:
                 SystemActions.Scroll(action.Direction ?? InputDirection.Down, action.Amount ?? 3);
-                Activity(action.Title);
+                Activity(action.Summary);
                 return;
             case InputActionKind.KeyboardShortcut:
                 SystemActions.Shortcut(action.Value ?? "");
-                Activity(action.Title);
+                Activity(action.Summary);
                 return;
             case InputActionKind.MediaKey:
                 SystemActions.Media(action.Media ?? MediaKey.PlayPause);
-                Activity(action.Title);
+                Activity(action.Summary);
                 return;
             case InputActionKind.Voice:
                 SystemActions.VoiceTyping();
@@ -833,11 +844,11 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
                 return;
             case InputActionKind.TypeText:
                 SystemActions.TypeText(action.Value ?? "");
-                Activity(action.Title);
+                Activity(action.Summary);
                 return;
             case InputActionKind.OpenUrl:
                 SystemActions.Open(action.Value ?? "");
-                Activity(action.Title);
+                Activity(action.Summary);
                 return;
             case InputActionKind.ShellCommand:
                 await SystemActions.RunShellAsync(action.Value ?? "", _cts.Token);
@@ -952,9 +963,9 @@ public class BridgeService : IBridgeService, IDisposable, IAsyncDisposable
         Activity($"Typed key {index}: {text}");
     }
 
-    /// Slot N is the Nth key in reading order (`Pad.AgentKeyIds[N]`) — the same
-    /// mapping the lighting uses, which is what makes the key you look at the
-    /// key you press.
+    /// Slot N is the Nth key in the configured reading-order layout
+    /// (`Bindings.AgentKeyIds[N]`) — the same mapping the lighting uses, which
+    /// is what makes the key you look at the key you press.
     ///
     /// Herdr selects the pane but leaves the terminal wherever it was in the
     /// window order, so an agent key pressed from a browser would move a cursor

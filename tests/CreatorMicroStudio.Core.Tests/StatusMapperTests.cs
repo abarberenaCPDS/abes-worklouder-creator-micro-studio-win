@@ -106,6 +106,88 @@ public class StatusMapperTests
     }
 
     [Fact]
+    public void ThreadsForUsesTheConfiguredLayoutInOrder()
+    {
+        var agents = new List<HerdrAgent>
+        {
+            new(null, null, null, null, "a", "idle", null, null, false),
+            new(null, null, null, null, "b", "working", null, null, false),
+        };
+
+        var threads = StatusMapper.ThreadsFor(agents, agentKeyIds: new[] { 4, 6, 8 });
+
+        Assert.Equal(new[] { 4, 6, 8 }, threads.Select(t => t.Id));
+        Assert.True(threads[0].Brightness > 0);
+        Assert.True(threads[1].Brightness > 0);
+        Assert.Equal(0, threads[2].Brightness);
+        Assert.Equal(Oai.Effect.Off, threads[2].Effect);
+    }
+
+    [Fact]
+    public void AThirteenKeyLayoutYieldsThirteenThreads()
+    {
+        var layout = new[] { 1, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+        var agents = Enumerable.Range(0, 20).Select(i =>
+            new HerdrAgent(null, null, null, null, $"a{i}", "idle", null, null, false)).ToList();
+
+        var threads = StatusMapper.ThreadsFor(agents, agentKeyIds: layout);
+
+        Assert.Equal(Pad.KeyCount, threads.Count);
+        Assert.Equal(layout, threads.Select(t => t.Id));
+    }
+
+    [Fact]
+    public void AnEmptyLayoutHasNoAgentKeys()
+    {
+        var agents = new List<HerdrAgent>
+        {
+            new(null, null, null, null, "a", "idle", null, null, false),
+        };
+
+        Assert.Empty(StatusMapper.ThreadsFor(agents, agentKeyIds: Array.Empty<int>()));
+    }
+
+    [Fact]
+    public void ActionThreadDefersConfiguredAgentKeysToAgentStatus()
+    {
+        var cfg = new BridgeConfig();
+        var layout = new[] { 0, 3 };
+
+        Assert.Null(StatusMapper.ActionThread(new InputAction(InputActionKind.FocusAgent), 3, cfg, layout));
+
+        // Focus Agent outside the layout is still a key of its own.
+        var focus = StatusMapper.ActionThread(new InputAction(InputActionKind.FocusAgent), 5, cfg, layout);
+        Assert.NotNull(focus);
+        Assert.Equal(5, focus!.Id);
+        Assert.Equal(cfg.FocusAgentColor, focus.Color);
+    }
+
+    [Fact]
+    public void ACustomActionOnAConfiguredAgentKeyReadsAsItsCategory()
+    {
+        var cfg = new BridgeConfig();
+        var action = new InputAction(InputActionKind.Scroll, Direction: InputDirection.Down, Amount: 5);
+
+        var thread = StatusMapper.ActionThread(action, 3, cfg, new[] { 3, 4 });
+
+        Assert.NotNull(thread);
+        Assert.Equal(3, thread!.Id);
+        Assert.Equal(cfg.SystemColor, thread.Color);
+        Assert.True(thread.Brightness > 0);
+    }
+
+    [Fact]
+    public void AKeySetToDoNothingGoesDark()
+    {
+        var thread = StatusMapper.ActionThread(new InputAction(InputActionKind.None), 2,
+            agentKeyIds: new[] { 2 });
+
+        Assert.NotNull(thread);
+        Assert.Equal(0, thread!.Brightness);
+        Assert.Equal(Oai.Effect.Off, thread.Effect);
+    }
+
+    [Fact]
     public void ConfigOverridesAreHonoured()
     {
         var cfg = new BridgeConfig { Colors = { ["blocked"] = 0x123456 } };

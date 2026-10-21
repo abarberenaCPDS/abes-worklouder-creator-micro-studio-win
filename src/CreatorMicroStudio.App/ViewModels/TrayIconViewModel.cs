@@ -236,37 +236,36 @@ public class TrayIconViewModel : INotifyPropertyChanged
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            var currentIds = new HashSet<string?>(agents.Select(a => a.PaneId ?? a.TerminalId));
-            var toRemove = Agents.Where(a => !currentIds.Contains(a.PaneId)).ToList();
-            foreach (var a in toRemove) Agents.Remove(a);
+            // Rebuild in the server's order, not first-seen order: slot N is
+            // agents[N], and the dashboard's pad map names its keys from here.
+            var existingByPane = new Dictionary<string, AgentViewModel>();
+            foreach (var existing in Agents) existingByPane.TryAdd(existing.PaneId, existing);
 
+            var ordered = new List<AgentViewModel>(agents.Count);
             foreach (var agent in agents)
             {
                 var paneId = agent.PaneId ?? agent.TerminalId ?? string.Empty;
-                var existing = Agents.FirstOrDefault(a => a.PaneId == paneId);
-                if (existing is not null)
+                if (!existingByPane.Remove(paneId, out var item))
                 {
-                    existing.Status = agent.AgentStatus;
-                    existing.ShortName = agent.ShortName;
-                    existing.DirectoryName = agent.DirectoryName;
-                    existing.Focused = agent.Focused;
-                }
-                else
-                {
-                    Agents.Add(new AgentViewModel
+                    item = new AgentViewModel
                     {
                         PaneId = paneId,
                         AgentName = agent.Agent,
-                        Status = agent.AgentStatus,
-                        ShortName = agent.ShortName,
-                        DirectoryName = agent.DirectoryName,
-                        Focused = agent.Focused,
                         FocusCommand = new Command(() => FocusAgent(agent))
-                    });
+                    };
                 }
+
+                item.AgentName = agent.Agent;
+                item.Status = agent.AgentStatus;
+                item.ShortName = agent.ShortName;
+                item.DirectoryName = agent.DirectoryName;
+                item.Focused = agent.Focused;
+                ordered.Add(item);
             }
 
-            AgentNames = Agents.Select(a => a.ShortName).ToList();
+            Agents.Clear();
+            foreach (var item in ordered) Agents.Add(item);
+            AgentNames = agents.Select(agent => agent.ShortName).ToArray();
         });
     }
 

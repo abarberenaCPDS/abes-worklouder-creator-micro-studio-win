@@ -56,12 +56,22 @@ remote rename is an external action and is not performed by this worktree.
   regrouped Lighting around the pad and selected key. The initial window now
   opens taller and wider within the primary display; visual validation still
   requires F5 on Windows.
+- [x] Configurable agent layout — any of the thirteen keycaps can be an agent
+  slot, in physical reading order, saved as the top-level `agentKeys` array
+  (stock layout `[1, 0, 2, 3, 4, 5]`). The Controls **Agent layout** card applies
+  and resets the layout; newly added keys reset to Focus Agent, removed keys
+  keep their actions, custom actions on layout keys take precedence, and
+  Focus-slot actions accept slots 1–13. Layout edits are host-side only: the
+  device keymap is never rewritten. Unreleased; this is a minor SemVer change
+  (0.5.0 → 0.6.0) and is recorded in `CHANGELOG.md`.
 
 ### Verification so far
 
 - `dotnet build AbesWorkLouderCreatorMicroStudio.Windows.sln` succeeds (existing
   nullable/obsolete warnings remain).
-- `dotnet test tests\CreatorMicroStudio.Core.Tests\CreatorMicroStudio.Core.Tests.csproj --filter "FullyQualifiedName!~HerdrWslTests"` passes: 160 tests.
+- `dotnet build src\CreatorMicroStudio.App\CreatorMicroStudio.App.csproj` succeeds
+  on Windows, including the MAUI XAML for the new **Agent layout** card.
+- `dotnet test tests\CreatorMicroStudio.Core.Tests\CreatorMicroStudio.Core.Tests.csproj --filter "FullyQualifiedName!~HerdrWslTests"` passes: 198 tests.
 - Setting `$env:WL_EMULATE = "1"` and running
   `dotnet run --no-build --project src\CreatorMicroStudio.Console` passes the
   emulator HID/keymap smoke test.

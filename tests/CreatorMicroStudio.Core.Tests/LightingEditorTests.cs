@@ -17,9 +17,10 @@ public class LightingEditorTests
         Assert.Empty(editor.Selection);
     }
 
-    /// The Inspector's "Top 6": the keys that carry agents, in reading order.
+    /// The stock layout's agent keys, in reading order. A configured layout is
+    /// passed in by the Lighting page; this pins the no-argument default.
     [Fact]
-    public void TheAgentKeysAreTheTopSix()
+    public void TheAgentKeysAreTheStockLayout()
     {
         var editor = new LightingEditor();
         editor.SelectAgentKeys();

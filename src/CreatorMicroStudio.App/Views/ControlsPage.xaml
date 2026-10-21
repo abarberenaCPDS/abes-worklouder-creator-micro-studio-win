@@ -164,7 +164,7 @@
                                    Style="{StaticResource FieldLabel}" />
                             <Entry Grid.Row="1" Grid.Column="1" Text="{Binding Slot}"
                                    IsVisible="{Binding IsSlotVisible}" Keyboard="Numeric"
-                                   Placeholder="1–6" Style="{StaticResource StudioEntry}" />
+                                   Placeholder="1–13" Style="{StaticResource StudioEntry}" />
 
                             <Label Grid.Row="2" Text="Direction" IsVisible="{Binding IsDirectionVisible}"
                                    Style="{StaticResource FieldLabel}" />
@@ -212,6 +212,64 @@
                     </VerticalStackLayout>
                 </Border>
             </Grid>
+
+            <!-- Host-side only: layout edits never rewrite the device keymap. -->
+            <Border Style="{StaticResource Card}">
+                <VerticalStackLayout Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <VerticalStackLayout Spacing="3">
+                            <Label Text="Agent layout" Style="{StaticResource CardEyebrow}" />
+                            <Label Text="{Binding AgentLayoutSummary}" Style="{StaticResource SectionTitle}" />
+                            <Label Text="Any of the thirteen keycaps can be an agent slot. Slots follow physical reading order; a custom action on a layout key still runs instead of focusing its slot. The device keymap is never rewritten."
+                                   Style="{StaticResource CaptionLabel}" LineBreakMode="WordWrap" />
+                        </VerticalStackLayout>
+                        <HorizontalStackLayout Grid.Column="1" Spacing="6" VerticalOptions="Start">
+                            <Button Text="Apply layout" Command="{Binding ApplyAgentLayoutCommand}"
+                                    Style="{StaticResource PrimaryButton}" />
+                            <Button Text="Reset to default" Command="{Binding ResetAgentLayoutCommand}"
+                                    Style="{StaticResource SecondaryButton}" />
+                        </HorizontalStackLayout>
+                    </Grid>
+
+                    <VerticalStackLayout Spacing="6"
+                                         BindableLayout.ItemsSource="{Binding AgentLayoutRows}">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate>
+                                <HorizontalStackLayout Spacing="6"
+                                                       BindableLayout.ItemsSource="{Binding Keys}">
+                                    <BindableLayout.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Text="{Binding ButtonText}"
+                                                    AutomationProperties.Name="{Binding AutomationName}"
+                                                    AutomationProperties.HelpText="{Binding HelpText}"
+                                                    Command="{Binding ToggleCommand}"
+                                                    Style="{StaticResource ChipButton}"
+                                                    WidthRequest="84" HeightRequest="38" Padding="6,0"
+                                                    Margin="0">
+                                                <Button.Triggers>
+                                                    <DataTrigger TargetType="Button" Binding="{Binding IsAgentKey}" Value="True">
+                                                        <Setter Property="BackgroundColor" Value="{StaticResource StudioSelection}" />
+                                                        <Setter Property="BorderColor" Value="{StaticResource StudioAccent}" />
+                                                        <Setter Property="BorderWidth" Value="1" />
+                                                        <Setter Property="TextColor" Value="{StaticResource StudioText}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger TargetType="Button" Binding="{Binding TakesPrecedence}" Value="True">
+                                                        <Setter Property="BorderColor" Value="{StaticResource StudioAmber}" />
+                                                        <Setter Property="BorderWidth" Value="1" />
+                                                    </DataTrigger>
+                                                </Button.Triggers>
+                                            </Button>
+                                        </DataTemplate>
+                                    </BindableLayout.ItemTemplate>
+                                </HorizontalStackLayout>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+
+                    <Label Text="{Binding AgentLayoutStatus}" Style="{StaticResource CaptionLabel}"
+                           LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
         </VerticalStackLayout>
     </ScrollView>
 </ContentView>

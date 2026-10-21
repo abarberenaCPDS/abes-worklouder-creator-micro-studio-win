@@ -60,9 +60,11 @@ window.
 
 The firmware numbers its keys row-major over a `[2, 4, 4, 3]` matrix, but **the
 first row is wired right to left** — key `0` is the top-*right* key. Reading
-order therefore starts `1, 0`, and the six agent keys are the two in the top row
-plus the four in the second. Everything below is addressed by these numbers, and
-so is every lighting payload the app sends.
+order therefore starts `1, 0`. The stock agent layout is the two keys in the top
+row plus the four in the second; any of the thirteen keycaps can be an agent slot
+instead (see [Agent layout](#agent-layout)). Everything below is addressed by
+these numbers, and so is every lighting payload the app sends. The diagram shows
+the stock layout.
 
 ```
           +---------+   +---------+
@@ -81,7 +83,7 @@ so is every lighting payload the app sends.
 
 | key | what it is | what a press does |
 |---|---|---|
-| `1`, `0`, `2`, `3`, `4`, `5` | the top two keys and the second row | **agent 0…5**, in the order Herdr's panel lists them |
+| `1`, `0`, `2`, `3`, `4`, `5` | the stock agent keys: the top two keys and the second row | **agent 0…5** in the stock layout, in the order Herdr's panel lists them |
 | `6` | row 3, first | Focuses Herdr's current agent by default; reassign in **Controls** |
 | `7` | row 3, second | cycles to the next Herdr tab by default |
 | `8` | row 3, third | Focuses Herdr's current agent by default; reassign in **Controls** |
@@ -92,14 +94,35 @@ so is every lighting payload the app sends.
 | dial | press | *nothing* — the slot is left as the pad shipped it (play/pause) |
 | joystick | — | cycles the **model** for the focused agent |
 
-Agent slot N is the Nth key in reading order — `Pad.AgentKeyIds` in
-`windows/src/CreatorMicroStudio.Core/Pad/Oai.cs`. That is the same mapping the lighting
-uses, which is what makes the key you look at the key you press.
+Agent slot N is the Nth key of the configured layout, in physical reading order.
+The stock layout lives in `Pad.AgentKeyIds` in
+`src/CreatorMicroStudio.Core/Pad/Oai.cs`; the live layout is
+`KeyBindings.AgentKeyIds`. That is the same mapping the lighting uses, which is
+what makes the key you look at the key you press.
 
 The **Controls** page lets you change what every physical input does without
 changing the physical layout or writing action choices to the pad's flash.
 Firmware input availability still varies by profile; the page labels inputs the
 active profile does not report.
+
+### Agent layout
+
+Any of the thirteen keycaps can be an agent slot, and the slots follow physical
+reading order: the first key in the layout answers slot 1, the second slot 2, and
+so on. Open the **Agent layout** card in **Controls** and click keycaps to add or
+remove them; **Apply layout** saves, and **Reset to default** restores the stock
+six keys (`1, 0, 2, 3, 4, 5`). A slot chip whose current action is not Focus
+Agent is marked, because that action still runs instead of focusing the slot.
+
+The card writes the top-level `"agentKeys"` array in `config.json`, for example
+`"agentKeys": [1, 0, 2, 3, 4, 5]`. An empty array (`"agentKeys": []`) is valid
+and leaves no agent slots; a missing or malformed array falls back to the stock
+layout. Any listed key focuses its agent unless an explicit `actions` entry says
+otherwise; adding a key resets it to Focus Agent, and removing a key leaves its
+current action in place. A custom action on a layout key takes precedence over
+the agent status that key would otherwise show. Layout edits are host-side only:
+they never rewrite the pad's flash keymap or change the keycodes the device
+reports.
 
 ## Binding the pad: the keymap
 
@@ -191,6 +214,7 @@ is left intact. This is not `%APPDATA%`.
     "joy-up": "model-previous",
     "12": { "type": "submit-prompt", "text": "Run the test suite" }
   },
+  "agentKeys": [1, 0, 2, 3, 4, 5],
   "dial": "scroll",
   "scroll": { "lines": 5 },
   "claude": { "models": ["fable", "opus", "sonnet", "haiku"], "efforts": ["low", "medium", "high", "xhigh", "max"] },
@@ -218,16 +242,17 @@ empty string unbinds a legacy text binding. An explicit `actions` entry takes
 precedence over the legacy text map. Without text/action overrides, the wide key
 starts Windows Voice Typing (`Win+H`).
 
-The Controls page saves edits to `actions` as they are applied and updates the
-running bridge immediately. External edits to the JSON are picked up on the next
-bridge start/off-on cycle. A malformed file falls back to defaults when read;
-saves refuse to replace malformed JSON.
+The Controls page saves edits to `actions` as they are applied and to
+`agentKeys` on **Apply layout**, and updates the running bridge immediately.
+External edits to the JSON are picked up on the next bridge start/off-on cycle.
+A malformed file falls back to defaults when read; saves refuse to replace
+malformed JSON.
 
 ### Configurable actions
 
 Controls can assign every action to any input:
 
-- **Herdr / agents:** Focus Agent, Focus slot 1–6, next/previous tab or workspace,
+- **Herdr / agents:** Focus Agent, Focus slot 1–13, next/previous tab or workspace,
   focus pane by direction, zoom pane, send keys, Herdr command.
 - **Prompts:** Insert text (unsubmitted) or Submit prompt.
 - **Tune:** Effort up/down, next/previous model, confirm/cancel model picker.
@@ -472,7 +497,7 @@ switcher.
 1. The status line says **Connected** and the pad's underglow takes the aggregate
    colour of your agents.
 2. The agent keys light in Herdr's own order. Compare against Herdr's agent panel
-   — slot N is row N.
+   — the Nth key in the configured layout is slot N.
 3. Press an agent key: the status line says `Focused <name>`, Herdr selects that
    pane, and the terminal comes forward.
 4. Press a macro key: the text appears in the focused pane's prompt, unsent; use
@@ -504,7 +529,7 @@ is the one sending a keystroke instead.
 | an `nc` complaint about `No such file or directory` | the socket is not where `HERDR_SOCKET_PATH` says: Herdr is not running, or it is in a different distro |
 | `~/…` in `HERDR_SOCKET_PATH` fails | nothing expands it: the WSL route runs no shell, so use the absolute `/home/you/…` |
 | the pad is dark and the window says `disabled` | the bridge is switched off. Toggle it back; the lights return immediately and the keymap is untouched |
-| one key stays dark but its agent is running | the 6 agent slots cover 6 agents; the tray window lists them all, in the same order, and its rows jump to the agent |
+| one key stays dark but its agent is running | the configured agent layout has fewer slots than you have agents; add keys in the **Agent layout** card in Controls. The tray window lists every agent, in the same order, and its rows jump to the agent |
 | everything is dark after switching profiles on the pad | see the keymap note above — the app binds the *active* profile's first layer |
 
 No hardware to hand? `WL_EMULATE=1` runs against an in-process pad

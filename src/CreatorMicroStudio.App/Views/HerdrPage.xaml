@@ -30,7 +30,7 @@
             <Border Style="{StaticResource Card}">
                 <VerticalStackLayout Spacing="12">
                     <Label Text="AGENTS AND PAD SLOTS" Style="{StaticResource CardEyebrow}" />
-                    <Label Text="Agents stay in Herdr server order. The first six map to the pad's six agent slots; click a row to request focus in Herdr."
+                    <Label Text="Agents stay in Herdr server order. The first agents map to the pad's configured agent slots, in physical reading order; click a row to request focus in Herdr."
                            Style="{StaticResource CaptionLabel}" />
                     <Label Text="{Binding AgentStatus}" Style="{StaticResource CaptionLabel}" />
 

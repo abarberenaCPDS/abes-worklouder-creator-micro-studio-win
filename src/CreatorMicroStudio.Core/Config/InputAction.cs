@@ -59,6 +59,24 @@ public sealed record InputAction(
         _ => Kind.ToString(),
     };
 
+    /// <summary>
+    /// The title plus its configured parameter, for lists, tooltips and
+    /// confirmations: "Focus agent slot 3", "Submit prompt: Run the tests".
+    /// </summary>
+    public string Summary => Kind switch
+    {
+        InputActionKind.FocusSlot => $"Focus agent slot {Slot ?? 1}",
+        InputActionKind.FocusPane => Direction is { } direction
+            ? $"Focus pane {direction.ToString().ToLowerInvariant()}"
+            : Title,
+        InputActionKind.Scroll or InputActionKind.MediaKey => Title,
+        InputActionKind.SendKeys or InputActionKind.HerdrCommand or InputActionKind.InsertText or
+        InputActionKind.SubmitPrompt or InputActionKind.KeyboardShortcut or InputActionKind.TypeText or
+        InputActionKind.OpenUrl or InputActionKind.ShellCommand =>
+            Value is { Length: > 0 } value ? $"{Title}: {value}" : $"{Title} (not set)",
+        _ => Title,
+    };
+
     public string Category => Kind switch
     {
         InputActionKind.FocusAgent or InputActionKind.FocusSlot or InputActionKind.NextTab or
@@ -148,7 +166,7 @@ public sealed record InputAction(
 
         return objectKind switch
         {
-            InputActionKind.FocusSlot => new(objectKind, Slot: Math.Clamp(Number("slot") ?? 1, 1, 6)),
+            InputActionKind.FocusSlot => new(objectKind, Slot: Math.Clamp(Number("slot") ?? 1, 1, Pad.KeyCount)),
             InputActionKind.FocusPane => new(objectKind, Direction: direction ?? InputDirection.Right),
             InputActionKind.Scroll => new(objectKind, Direction: direction ?? InputDirection.Down,
                 Amount: Math.Clamp(Number("amount", "lines") ?? 3, 1, 20)),

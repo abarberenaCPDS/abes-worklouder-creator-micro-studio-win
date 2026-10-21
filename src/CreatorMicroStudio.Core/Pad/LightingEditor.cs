@@ -49,11 +49,11 @@ public sealed class LightingEditor
         for (var id = 0; id < Pad.KeyCount; id++) _selection.Add(id);
     }
 
-    /// The six agent keys, as the Inspector's "Top 6".
-    public void SelectAgentKeys()
+    /// The configured agent keys, as the Lighting page's "Agent keys" means.
+    public void SelectAgentKeys(IReadOnlyList<int>? agentKeyIds = null)
     {
         _selection.Clear();
-        foreach (var id in Pad.AgentKeyIds) _selection.Add(id);
+        foreach (var id in agentKeyIds ?? Pad.AgentKeyIds) _selection.Add(id);
     }
 
     /// The edit as one thread per selected key, in key order.

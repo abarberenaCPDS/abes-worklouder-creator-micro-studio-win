@@ -8,6 +8,19 @@ console harness, so there is nothing else to keep in step.
 
 ## [Unreleased]
 
+### Added
+
+- Configurable agent layout: any of the thirteen keycaps can be assigned to
+  agent slots, in physical reading order, from the **Agent layout** card in
+  **Controls** or the top-level `"agentKeys"` array in `config.json`. The stock
+  six-key layout (`[1, 0, 2, 3, 4, 5]`) remains the default; an empty array is
+  valid, and a missing or malformed value falls back to the stock layout. Any
+  listed key focuses its agent unless an action overrides it; adding a key resets
+  it to Focus Agent, removed keys keep their actions, and a custom action on a
+  layout key takes precedence over its agent slot. Focus-slot
+  actions now accept slots 1–13. Layout edits are host-side and never rewrite
+  the device keymap.
+
 ### Changed
 
 - Reworked Controls around the physical pad, grouped quick-select inputs, and a persistent action editor. Lighting now groups Keys at rest, the selected-key editor, status looks, and shared zones.

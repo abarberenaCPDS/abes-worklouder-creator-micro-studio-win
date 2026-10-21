@@ -16,11 +16,17 @@ using System.Text.Json.Nodes;
 ///         "12": "Run the test suite",
 ///         "10+11": "Summarise what you are working on"
 ///       },
+///       "agentKeys": [1, 0, 2, 3],
 ///       "dial": "scroll",
 ///       "scroll": { "lines": 5 },
 ///       "claude": { "models": ["fable", "opus"] },
 ///       "codex":  { "models": ["gpt-5.6-sol", "gpt-5.6-codex"] }
 ///     }
+///
+/// `"agentKeys"` assigns any of the thirteen keycaps to agent slots, in physical
+/// reading order. Missing or malformed values keep the stock six-key layout; an
+/// empty array is valid and assigns none. A custom action on a layout key takes
+/// precedence over its agent status.
 ///
 /// A bound string is injected into the focused agent's prompt, unsubmitted.
 /// `"10+11"` addresses the wide key as one; `"10"` and `"11"` address its
@@ -41,6 +47,8 @@ public sealed class KeyBindings : IEquatable<KeyBindings>
     public Dictionary<int, string> Texts { get; } = new();
     /// <summary>Explicit host-side action overrides, keyed by AG input id.</summary>
     public Dictionary<int, InputAction> Actions { get; } = new();
+    /// <summary>Keycaps assigned to agent slots, in physical reading order.</summary>
+    public List<int> AgentKeyIds { get; } = new();
     public List<string> ClaudeModels { get; } = new();
     public List<string> ClaudeEfforts { get; } = new();
     public List<string> CodexModels { get; } = new();
@@ -75,6 +83,7 @@ public sealed class KeyBindings : IEquatable<KeyBindings>
     public KeyBindings()
     {
         foreach (var (k, v) in Defaults) Texts[k] = v;
+        AgentKeyIds.AddRange(Pad.AgentKeyIds);
         ClaudeModels.AddRange(DefaultClaudeModels);
         ClaudeEfforts.AddRange(DefaultClaudeEfforts);
         Dial = TuneLadder.DialMode.Scroll;
@@ -83,11 +92,12 @@ public sealed class KeyBindings : IEquatable<KeyBindings>
 
     public KeyBindings(Dictionary<int, string> texts, List<string> claudeModels, List<string> claudeEfforts,
         List<string> codexModels, TuneLadder.DialMode dial, TuneLadder.ScrollSettings scroll,
-        Dictionary<int, InputAction>? actions = null)
+        Dictionary<int, InputAction>? actions = null, IEnumerable<int>? agentKeyIds = null)
     {
         foreach (var (k, v) in texts) Texts[k] = v;
         if (actions is not null)
             foreach (var (k, v) in actions.Where(pair => pair.Key is >= 0 and <= Pad.MaxThreadId)) Actions[k] = v;
+        AgentKeyIds.AddRange(NormalizeAgentKeys(agentKeyIds ?? Pad.AgentKeyIds) ?? Pad.AgentKeyIds);
         ClaudeModels.AddRange(claudeModels);
         ClaudeEfforts.AddRange(claudeEfforts);
         CodexModels.AddRange(codexModels);
@@ -99,13 +109,33 @@ public sealed class KeyBindings : IEquatable<KeyBindings>
     public string? TextFor(int key) =>
         Texts.TryGetValue(key, out var text) && text.Length > 0 ? text : null;
 
+    /// The agent slot a keycap answers for, or null when it is not a layout key.
+    /// Slots are positions in <see cref="AgentKeyIds"/>, which is physical
+    /// reading order rather than key id order.
+    public int? AgentSlotFor(int key)
+    {
+        var slot = AgentKeyIds.IndexOf(key);
+        return slot >= 0 ? slot : null;
+    }
+
     public InputAction ActionFor(int input)
     {
         if (Actions.TryGetValue(input, out var action)) return action;
         return DefaultActionFor(input);
     }
 
+    /// The default an input would have if no explicit action overrode it. A key
+    /// in the agent layout defaults to Focus Agent: that is what listing it in
+    /// `agentKeys` means, and it keeps a hand-written layout working even where
+    /// Windows gives a key a different stock default (key 7 cycles tabs).
     private InputAction DefaultActionFor(int input)
+    {
+        if (input is >= 0 and < Pad.KeyCount && AgentSlotFor(input) is not null)
+            return new InputAction(InputActionKind.FocusAgent);
+        return StockActionFor(input);
+    }
+
+    private InputAction StockActionFor(int input)
     {
         if (TextFor(input) is { } text && (Pad.MacroKeyIds.Contains(input) || Pad.VoiceKeyIds.Contains(input)))
             return new InputAction(InputActionKind.InsertText, text);
@@ -160,6 +190,72 @@ public sealed class KeyBindings : IEquatable<KeyBindings>
         });
     }
 
+    /// Validates, de-duplicates and canonicalises keycaps into physical reading
+    /// order, or null when any id is not a keycap.
+    public static List<int>? NormalizeAgentKeys(IEnumerable<int> keys)
+    {
+        ArgumentNullException.ThrowIfNull(keys);
+        var requested = keys.ToList();
+        if (requested.Any(key => key < 0 || key >= Pad.KeyCount)) return null;
+        var selected = requested.ToHashSet();
+        return Pad.DisplayRows.SelectMany(row => row).Where(selected.Contains).ToList();
+    }
+
+    /// <summary>
+    /// Saves a physical-reading-order layout and resets newly assigned keys to
+    /// Focus Agent in the same atomic config update. Removed keys keep their
+    /// current actions. Duplicates are collapsed and order is normalised.
+    /// When supplied, <paramref name="expectedBindings"/> refuses to replace a
+    /// layout or key action that changed since it was reviewed.
+    /// </summary>
+    public static void SetAgentKeys(IEnumerable<int> keys, KeyBindings? expectedBindings = null,
+        StudioConfigStore? store = null)
+    {
+        ArgumentNullException.ThrowIfNull(keys);
+        var requested = keys.ToList();
+        var normalized = NormalizeAgentKeys(requested);
+        if (normalized is null)
+        {
+            var invalid = requested.FirstOrDefault(key => key < 0 || key >= Pad.KeyCount, -1);
+            throw new AgentLayoutEditException(
+                $"Key {invalid} is not a physical keycap that can be assigned to an agent slot.");
+        }
+
+        var layout = normalized;
+        (store ?? StudioConfigStore.Standard).Update(json =>
+        {
+            if (expectedBindings is not null)
+            {
+                var current = Parse(System.Text.Encoding.UTF8.GetBytes(json.ToJsonString()));
+                var unchanged = current.AgentKeyIds.SequenceEqual(expectedBindings.AgentKeyIds) &&
+                    Pad.ConfigurableActionKeyIds
+                        .All(input => current.ActionFor(input) == expectedBindings.ActionFor(input));
+                if (!unchanged)
+                    throw new AgentLayoutEditException(
+                        "The agent-key layout or key actions changed since you reviewed them. Review the current bindings and try again.",
+                        configurationChanged: true);
+            }
+
+            var existing = ParseAgentKeys(json);
+            var newlyAdded = layout.Where(key => !existing.Contains(key)).ToList();
+            var actions = json["actions"] as JsonObject ?? new JsonObject();
+            foreach (var key in newlyAdded)
+            {
+                foreach (var alias in actions.Select(entry => entry.Key)
+                             .Where(name => !int.TryParse(name, out _) && InputIdsFor(name).SequenceEqual(new[] { key }))
+                             .ToArray())
+                {
+                    actions.Remove(alias);
+                }
+                actions[key.ToString()] = new InputAction(InputActionKind.FocusAgent).ToJsonNode();
+            }
+
+            json["agentKeys"] = new JsonArray(layout.Select(key => (JsonNode?)JsonValue.Create(key)).ToArray());
+            if (actions.Count == 0) json.Remove("actions");
+            else json["actions"] = actions;
+        });
+    }
+
     public static string ConfigPath()
     {
         var baseDir = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
@@ -181,11 +277,11 @@ public sealed class KeyBindings : IEquatable<KeyBindings>
         return Path.Combine(baseDir, "micromanager", "config.json");
     }
 
-    public static KeyBindings Load()
+    public static KeyBindings Load(StudioConfigStore? store = null)
     {
         try
         {
-            var json = StudioConfigStore.Standard.Read();
+            var json = (store ?? StudioConfigStore.Standard).Read();
             return json.Count == 0 ? new KeyBindings() : Parse(System.Text.Encoding.UTF8.GetBytes(json.ToJsonString()));
         }
         catch
@@ -282,7 +378,8 @@ public sealed class KeyBindings : IEquatable<KeyBindings>
             }
         }
 
-        return new KeyBindings(texts, claudeModels, claudeEfforts, codexModels, dial, scroll, actions);
+        return new KeyBindings(texts, claudeModels, claudeEfforts, codexModels, dial, scroll, actions,
+            ParseAgentKeys(root));
 
         static string KeyName(JsonElement obj, string name, string fallback) =>
             obj.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String &&
@@ -297,6 +394,55 @@ public sealed class KeyBindings : IEquatable<KeyBindings>
                     .Select(e => e.GetString()!)
                     .ToList()
                 : new List<string>();
+    }
+
+    /// Missing or malformed layouts preserve the stock layout. An empty array
+    /// is valid and intentionally assigns no keycaps.
+    private static List<int> ParseAgentKeys(JsonElement root)
+    {
+        if (!root.TryGetProperty("agentKeys", out var value) || value.ValueKind != JsonValueKind.Array)
+            return Pad.AgentKeyIds;
+
+        var keys = new List<int>();
+        foreach (var item in value.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Number || !item.TryGetDouble(out var number) ||
+                !double.IsFinite(number) || number != Math.Truncate(number) ||
+                number < 0 || number >= Pad.KeyCount)
+                return Pad.AgentKeyIds;
+            keys.Add((int)number);
+        }
+
+        return NormalizeAgentKeys(keys) ?? Pad.AgentKeyIds;
+    }
+
+    private static List<int> ParseAgentKeys(JsonObject json)
+    {
+        if (json["agentKeys"] is not JsonArray array) return Pad.AgentKeyIds;
+
+        var keys = new List<int>();
+        foreach (var item in array)
+        {
+            if (item is not JsonValue value || !TryNumber(value, out var number) ||
+                number != Math.Truncate(number) || number < 0 || number >= Pad.KeyCount)
+                return Pad.AgentKeyIds;
+            keys.Add((int)number);
+        }
+
+        return NormalizeAgentKeys(keys) ?? Pad.AgentKeyIds;
+    }
+
+    private static bool TryNumber(JsonValue value, out double number)
+    {
+        if (value.TryGetValue<double>(out number)) return true;
+        if (value.TryGetValue<int>(out var integer))
+        {
+            number = integer;
+            return true;
+        }
+
+        number = 0;
+        return false;
     }
 
     private static List<int> KeyIdsFor(string name)
@@ -330,6 +476,7 @@ public sealed class KeyBindings : IEquatable<KeyBindings>
         other is not null &&
         Texts.Count == other.Texts.Count && !Texts.Except(other.Texts).Any() &&
         Actions.Count == other.Actions.Count && !Actions.Except(other.Actions).Any() &&
+        AgentKeyIds.SequenceEqual(other.AgentKeyIds) &&
         ClaudeModels.SequenceEqual(other.ClaudeModels) &&
         ClaudeEfforts.SequenceEqual(other.ClaudeEfforts) &&
         CodexModels.SequenceEqual(other.CodexModels) &&
@@ -337,6 +484,14 @@ public sealed class KeyBindings : IEquatable<KeyBindings>
         Scroll == other.Scroll;
 
     public override bool Equals(object? obj) => Equals(obj as KeyBindings);
-    public override int GetHashCode() =>
-        HashCode.Combine(Texts.Count, Actions.Count, ClaudeModels, ClaudeEfforts, CodexModels, Dial, Scroll);
+    public override int GetHashCode() => HashCode.Combine(
+        Texts.Count, Actions.Count, string.Join(',', AgentKeyIds),
+        ClaudeModels, ClaudeEfforts, CodexModels, Dial, Scroll);
+}
+
+/// <summary>Raised when an agent layout cannot be saved.</summary>
+public sealed class AgentLayoutEditException(string message, bool configurationChanged = false) : Exception(message)
+{
+    /// <summary>True when the on-disk layout or key actions changed since review.</summary>
+    public bool ConfigurationChanged { get; } = configurationChanged;
 }

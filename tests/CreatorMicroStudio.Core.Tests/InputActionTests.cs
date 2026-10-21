@@ -49,10 +49,21 @@ public sealed class InputActionTests
         using var scroll = JsonDocument.Parse("{\"type\":\"scroll\",\"amount\":0}");
         using var macro = JsonDocument.Parse("\"macro\"");
 
-        Assert.Equal(6, InputAction.Parse(slot.RootElement)?.Slot);
+        Assert.Equal(DevicePad.KeyCount, InputAction.Parse(slot.RootElement)?.Slot);
         Assert.Equal(1, InputAction.Parse(scroll.RootElement)?.Amount);
         Assert.Equal(new InputAction(InputActionKind.InsertText, "old macro"),
             InputAction.Parse(macro.RootElement, "old macro"));
+    }
+
+    /// A slot is a keycap position, so the parse clamps to 1..13 rather than
+    /// leaving a focus action that can never match a key.
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(20, DevicePad.KeyCount)]
+    public void FocusSlotIsClampedToARealKeycap(int slot, int expected)
+    {
+        using var json = JsonDocument.Parse($"{{\"type\":\"focus-slot\",\"slot\":{slot}}}");
+        Assert.Equal(expected, InputAction.Parse(json.RootElement)?.Slot);
     }
 
     [Fact]
@@ -98,5 +109,17 @@ public sealed class InputActionTests
         Assert.Equal(InputActionKind.EffortDown, bindings.ActionFor(DevicePad.DialClockwiseId).Kind);
         Assert.Equal(new InputAction(InputActionKind.InsertText, "legacy macro"), bindings.ActionFor(9));
         Assert.Equal(new[] { "low", "high" }, bindings.ClaudeEfforts);
+    }
+
+    [Fact]
+    public void SummaryIncludesTheConfiguredParameter()
+    {
+        Assert.Equal("Focus agent slot 3",
+            new InputAction(InputActionKind.FocusSlot, Slot: 3).Summary);
+        Assert.Equal("Focus agent slot 1", new InputAction(InputActionKind.FocusSlot).Summary);
+        Assert.Equal("Submit prompt: Run tests",
+            new InputAction(InputActionKind.SubmitPrompt, "Run tests").Summary);
+        Assert.Equal("Insert text (not set)", new InputAction(InputActionKind.InsertText).Summary);
+        Assert.Equal("Next tab", new InputAction(InputActionKind.NextTab).Summary);
     }
 }
