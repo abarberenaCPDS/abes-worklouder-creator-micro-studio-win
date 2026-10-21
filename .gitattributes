@@ -11,6 +11,9 @@
 # both, so CRLF is safe here too.
 *.ps1 text eol=crlf
 
+# Git hooks must stay LF so the shell can execute them on every platform.
+/.githooks/* text eol=lf
+
 # Binary assets must never be converted.
 *.ico binary
 *.png binary

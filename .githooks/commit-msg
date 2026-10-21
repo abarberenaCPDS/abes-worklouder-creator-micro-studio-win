@@ -1,0 +1,24 @@
+#!/bin/sh
+# Strip AI/assistant co-author trailers so they never become repo contributors.
+# Also reject commits whose author identity names an AI assistant.
+msg="$1"
+
+# Reject AI authors.
+author_name=$(git config user.name)
+case "$(printf '%s' "$author_name" | tr '[:upper:]' '[:lower:]')" in
+  *claude*|*anthropic*|*copilot*|*gpt*|*gemini*|*cursor*) 
+    echo "commit-msg: author name '$author_name' names an AI assistant; aborting." >&2
+    exit 1
+    ;;
+esac
+
+# Strip any AI co-author trailers.
+tmp="${msg}.tmp"
+if grep -ivE '^[[:space:]]*Co-[Aa]uthored-[Bb]y:.*(claude|anthropic|copilot|gpt-[0-9]|openai|gemini|cursor)' "$msg" > "$tmp"; then
+  :
+fi
+if ! cmp -s "$msg" "$tmp"; then
+  echo "commit-msg: stripped AI co-author trailer(s)." >&2
+fi
+mv "$tmp" "$msg"
+exit 0

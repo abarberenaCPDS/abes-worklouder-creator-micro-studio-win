@@ -120,3 +120,9 @@ Full write-up in `docs/hacking.md`; these are the ones that fail *silently*:
 - `PLAN.md` is the checklist and state of play — keep it current when you land or
   change scope.
 - Keep `tests/CreatorMicroStudio.Core.Tests` green; those tests are the spec.
+- **Contributor attribution.** Never credit Claude, Anthropic, or any other AI
+  assistant/tool as a commit author or `Co-Authored-By` trailer, and never add
+  them to the remote repo's Contributors. All commits are authored by the human
+  maintainer (`abe` / `abarberena@cpds.edu.mx`). Strip any AI co-author trailers
+  before committing; the `commit-msg` hook in `.githooks/` enforces this. Do not
+  install or use tools that auto-add such trailers.
