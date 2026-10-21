@@ -1,0 +1,16 @@
+# Abe's WorkLouder Creator Micro Studio for Windows.
+#
+# The working tree is CRLF on disk (Windows editors, Visual Studio) and LF in
+# the repository. `eol=crlf` makes Git store LF in the blobs and check out
+# CRLF, so the tree stops reporting every file as modified after a Windows
+# tool re-saves it. Without this, a checkout and the repo disagree about line
+# endings and `git status` shows the whole tree as changed.
+* text=auto eol=crlf
+
+# Scripts keep the line ending they run with on Windows; PowerShell accepts
+# both, so CRLF is safe here too.
+*.ps1 text eol=crlf
+
+# Binary assets must never be converted.
+*.ico binary
+*.png binary
