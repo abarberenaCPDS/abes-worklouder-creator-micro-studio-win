@@ -15,6 +15,10 @@ agent when you press the key.
 It drives the pad the same way the macOS app does — Herdr's API on one side, a
 raw-HID JSON-RPC channel on the other — with no Node and no daemon.
 
+> 
+> ![](./docs/imgs/00-studio.png)
+>
+
 > **Status:** the branded app, configurable actions, sidebar pages and persistent
 > Studio lighting build. F5 visual verification and live-device/action checks
 > remain; [PLAN.md](PLAN.md) tracks progress.
